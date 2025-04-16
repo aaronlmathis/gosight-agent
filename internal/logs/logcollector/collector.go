@@ -32,5 +32,5 @@ import (
 
 type Collector interface {
 	Name() string
-	Collect(ctx context.Context) ([]model.LogEntry, error)
+	Collect(ctx context.Context) ([][]model.LogEntry, error)
 }
