@@ -16,19 +16,19 @@ GoSight Agent is a secure, modular telemetry collector written in Go. It gathers
 
 ## Build
 
-\`\`\`bash
+```bash
 go build -o gosight-agent ./cmd
-\`\`\`
+```
 
 ## Configuration
 
-Configure using \`config.yaml\`, environment variables, or command-line flags. See example config in \`./agent/config\`.
+Configure using `config.yaml`, environment variables, or command-line flags. See example config in \`./agent/config\`.
 
 ## Running
 
-\`\`\`bash
+```bash
 ./gosight-agent --config ./config.yaml
-\`\`\`
+```
 
 ## Security
 
@@ -38,11 +38,21 @@ Configure using \`config.yaml\`, environment variables, or command-line flags. S
 
 ## Directory Overview
 
-- \`internal/\` – core agent logic and collectors
-- \`metrics/\` – metric collectors and sender
-- \`logs/\` – log runners and batching
-- \`proto/\` – gRPC models (imported from gosight-shared)
-- \`cmd/\` – agent entrypoint
+- `cmd/` – Main entrypoint for launching the agent
+- `docs/` – Developer documentation and integration notes
+- `internal/agent/` – Agent lifecycle management
+- `internal/agentmanager/` – Central orchestration and agent state
+- `internal/bootstrap/` – Startup logic and initialization
+- `internal/command/` – Remote command execution handling
+- `internal/config/` – Configuration parsing and validation
+- `internal/grpc/` – gRPC connection management
+- `internal/identity/` – Persistent agent ID generation
+- `internal/logs/` – Log collection runners and batching
+- `internal/meta/` – Metadata builders for metrics/logs
+- `internal/metrics/` – Metric collectors and task runners
+- `internal/processes/` – Process snapshot collection
+- `internal/protohelper/` – Converters between model and proto
+- `internal/utils/` – Logging, error handling, and helpers
 
 ## License
 
