@@ -32,9 +32,9 @@ import (
 	"unicode/utf8"
 	"unsafe"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 	"golang.org/x/sys/windows"
 )
 

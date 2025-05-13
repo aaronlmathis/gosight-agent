@@ -25,8 +25,8 @@ along with GoSight. If not, see https://www.gnu.org/licenses/.
 package protohelper
 
 import (
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/proto"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

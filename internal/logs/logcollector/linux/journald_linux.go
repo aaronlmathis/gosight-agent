@@ -34,9 +34,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 	"github.com/coreos/go-systemd/v22/sdjournal"
 )
 

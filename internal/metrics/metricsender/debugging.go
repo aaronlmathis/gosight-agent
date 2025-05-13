@@ -25,7 +25,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aaronlmathis/gosight/shared/model"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 // AppendMetricsToFile appends the given MetricPayload to a file in JSON format.

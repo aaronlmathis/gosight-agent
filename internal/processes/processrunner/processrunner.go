@@ -28,13 +28,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/agent/internal/meta"
-	"github.com/aaronlmathis/gosight/agent/internal/processes/processcollector"
-	"github.com/aaronlmathis/gosight/agent/internal/processes/processsender"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-agent/internal/meta"
+	"github.com/aaronlmathis/gosight-agent/internal/processes/processcollector"
+	"github.com/aaronlmathis/gosight-agent/internal/processes/processsender"
 
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // ProcessRunner is a struct that handles the collection and sending of process data.

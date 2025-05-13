@@ -30,7 +30,7 @@ import (
 
 	"github.com/shirou/gopsutil/v4/process"
 
-	"github.com/aaronlmathis/gosight/shared/model"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 const topN = 20

@@ -34,11 +34,11 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/agent/internal/logs/logrunner"
-	metricrunner "github.com/aaronlmathis/gosight/agent/internal/metrics/metricrunner"
-	"github.com/aaronlmathis/gosight/agent/internal/processes/processrunner"
-	"github.com/aaronlmathis/gosight/shared/model"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-agent/internal/logs/logrunner"
+	metricrunner "github.com/aaronlmathis/gosight-agent/internal/metrics/metricrunner"
+	"github.com/aaronlmathis/gosight-agent/internal/processes/processrunner"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 func TestNewAgent(t *testing.T) {

@@ -29,9 +29,9 @@ import (
 	"context"
 	"time"
 
-	agentutils "github.com/aaronlmathis/gosight/agent/internal/utils"
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	agentutils "github.com/aaronlmathis/gosight-agent/internal/utils"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 	"github.com/shirou/gopsutil/v4/net"
 )
 

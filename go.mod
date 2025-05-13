@@ -1,14 +1,15 @@
-module github.com/aaronlmathis/gosight/agent
+module github.com/aaronlmathis/gosight-agent
 
 go 1.23.7
 
 require (
-	github.com/aaronlmathis/gosight/shared v0.0.0-20250426154316-fefd52a11e43
+	github.com/aaronlmathis/gosight-shared v0.0.0-20250513191055-0380956c32cb
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/docker/docker v25.0.6+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/nxadm/tail v1.4.11
 	github.com/shirou/gopsutil/v4 v4.25.3
+	golang.org/x/sys v0.32.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1
@@ -47,7 +48,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
 	golang.org/x/net v0.39.0 // indirect
-	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect

@@ -6,8 +6,8 @@ package windowscollector
 import (
 	"context"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/shared/model"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 type EventViewerCollector struct{}

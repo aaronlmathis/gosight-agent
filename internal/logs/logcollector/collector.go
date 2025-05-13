@@ -27,7 +27,7 @@ package logcollector
 import (
 	"context"
 
-	"github.com/aaronlmathis/gosight/shared/model"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 // Collector is an interface that defines the methods for a log collector.

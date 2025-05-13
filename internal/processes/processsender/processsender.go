@@ -31,12 +31,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	grpcconn "github.com/aaronlmathis/gosight/agent/internal/grpc"
-	"github.com/aaronlmathis/gosight/agent/internal/protohelper"
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/proto"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	grpcconn "github.com/aaronlmathis/gosight-agent/internal/grpc"
+	"github.com/aaronlmathis/gosight-agent/internal/protohelper"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/proto"
+	"github.com/aaronlmathis/gosight-shared/utils"
 	goproto "google.golang.org/protobuf/proto"
 
 	"google.golang.org/grpc"

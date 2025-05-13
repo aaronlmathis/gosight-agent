@@ -16,8 +16,8 @@ package linuxcollector
 import (
 	"context"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/shared/model"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 // SecurityLogCollector is a no-op stub for Windows.

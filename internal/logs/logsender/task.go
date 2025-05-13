@@ -28,8 +28,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // StartWorkerPool launches N workers and processes metric payloads with retries

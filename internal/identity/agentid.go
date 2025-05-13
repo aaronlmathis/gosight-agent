@@ -28,7 +28,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-shared/utils"
 	"github.com/google/uuid"
 )
 

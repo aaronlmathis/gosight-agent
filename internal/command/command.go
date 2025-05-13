@@ -26,8 +26,8 @@ package command
 import (
 	"context"
 
-	"github.com/aaronlmathis/gosight/shared/proto"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-shared/proto"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // HandleCommand processes incoming command requests based on their type.

@@ -29,8 +29,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // Metric creates a new model.Metric instance with the provided parameters.

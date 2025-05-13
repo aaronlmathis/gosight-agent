@@ -31,12 +31,12 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	linuxcollector "github.com/aaronlmathis/gosight/agent/internal/logs/logcollector/linux"
-	windowscollector "github.com/aaronlmathis/gosight/agent/internal/logs/logcollector/windows"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	linuxcollector "github.com/aaronlmathis/gosight-agent/internal/logs/logcollector/linux"
+	windowscollector "github.com/aaronlmathis/gosight-agent/internal/logs/logcollector/windows"
 
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // LogRegistry holds active log collectors keyed by name

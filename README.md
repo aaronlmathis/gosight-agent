@@ -1,4 +1,4 @@
-![Go](https://img.shields.io/badge/built%20with-Go-blue) ![License](https://img.shields.io/github/license/aaronlmathis/gosight-agent) ![Status](https://img.shields.io/badge/status-active-brightgreen)
+![Go](https://img.shields.io/badge/built%20with-Go-blue) ![License](https://img.shields.io/github/license/aaronlmathis/gosight-agent) ![Status](https://img.shields.io/badge/status-active-brightgreen) [![Go Report Card](https://goreportcard.com/badge/github.com/aaronlmathis/gosight-agent)](https://goreportcard.com/report/github.com/aaronlmathis/gosight-agent) 
 
 # GoSight Agent
 

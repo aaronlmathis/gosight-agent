@@ -30,9 +30,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	gosightagent "github.com/aaronlmathis/gosight/agent/internal/agent"
-	"github.com/aaronlmathis/gosight/agent/internal/bootstrap"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	gosightagent "github.com/aaronlmathis/gosight-agent/internal/agent"
+	"github.com/aaronlmathis/gosight-agent/internal/bootstrap"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 var Version = "dev" // default

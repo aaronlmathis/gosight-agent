@@ -30,8 +30,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // LoadAgentConfig loads the agent configuration from a file, environment variables, and command-line flags.

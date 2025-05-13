@@ -34,8 +34,8 @@ import (
 	"strings"
 	"time"
 
-	agentutils "github.com/aaronlmathis/gosight/agent/internal/utils"
-	"github.com/aaronlmathis/gosight/shared/model"
+	agentutils "github.com/aaronlmathis/gosight-agent/internal/utils"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 // PodmanCollector collects metrics from Podman containers.

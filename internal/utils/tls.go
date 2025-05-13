@@ -31,7 +31,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
 )
 
 // LoadTLSConfig loads the TLS configuration for the agent.

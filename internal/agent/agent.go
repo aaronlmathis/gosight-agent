@@ -33,15 +33,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	grpcconn "github.com/aaronlmathis/gosight/agent/internal/grpc"
-	agentidentity "github.com/aaronlmathis/gosight/agent/internal/identity"
-	"github.com/aaronlmathis/gosight/agent/internal/logs/logrunner"
-	"github.com/aaronlmathis/gosight/agent/internal/meta"
-	metricrunner "github.com/aaronlmathis/gosight/agent/internal/metrics/metricrunner"
-	"github.com/aaronlmathis/gosight/agent/internal/processes/processrunner"
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	grpcconn "github.com/aaronlmathis/gosight-agent/internal/grpc"
+	agentidentity "github.com/aaronlmathis/gosight-agent/internal/identity"
+	"github.com/aaronlmathis/gosight-agent/internal/logs/logrunner"
+	"github.com/aaronlmathis/gosight-agent/internal/meta"
+	metricrunner "github.com/aaronlmathis/gosight-agent/internal/metrics/metricrunner"
+	"github.com/aaronlmathis/gosight-agent/internal/processes/processrunner"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // Agent is a struct that represents the GoSight agent.

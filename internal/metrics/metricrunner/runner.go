@@ -26,12 +26,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/agent/internal/meta"
-	"github.com/aaronlmathis/gosight/agent/internal/metrics/metriccollector"
-	"github.com/aaronlmathis/gosight/agent/internal/metrics/metricsender"
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-agent/internal/meta"
+	"github.com/aaronlmathis/gosight-agent/internal/metrics/metriccollector"
+	"github.com/aaronlmathis/gosight-agent/internal/metrics/metricsender"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // MetricRunner is a struct that handles the collection and sending of metrics.

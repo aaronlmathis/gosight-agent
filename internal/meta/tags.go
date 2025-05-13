@@ -29,7 +29,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aaronlmathis/gosight/shared/model"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 // BuildStandardTags sets required labels for consistent metric identity and filtering.

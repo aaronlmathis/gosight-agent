@@ -26,12 +26,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/agent/internal/logs/logcollector"
-	"github.com/aaronlmathis/gosight/agent/internal/logs/logsender"
-	"github.com/aaronlmathis/gosight/agent/internal/meta"
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-agent/internal/logs/logcollector"
+	"github.com/aaronlmathis/gosight-agent/internal/logs/logsender"
+	"github.com/aaronlmathis/gosight-agent/internal/meta"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // LogRunner is a struct that handles the collection and sending of log data.

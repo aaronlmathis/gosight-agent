@@ -27,8 +27,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 func SetupLogging(cfg *config.Config) {

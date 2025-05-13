@@ -27,7 +27,7 @@ package metriccollector
 import (
 	"context"
 
-	"github.com/aaronlmathis/gosight/shared/model"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 // Collector is the interface that all metric collectors must implement.

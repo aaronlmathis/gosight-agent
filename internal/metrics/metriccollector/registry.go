@@ -27,11 +27,11 @@ package metriccollector
 import (
 	"context"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/agent/internal/metrics/metriccollector/container"
-	"github.com/aaronlmathis/gosight/agent/internal/metrics/metriccollector/system"
-	"github.com/aaronlmathis/gosight/shared/model"
-	"github.com/aaronlmathis/gosight/shared/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-agent/internal/metrics/metriccollector/container"
+	"github.com/aaronlmathis/gosight-agent/internal/metrics/metriccollector/system"
+	"github.com/aaronlmathis/gosight-shared/model"
+	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
 // Registry holds active collectors keyed by name

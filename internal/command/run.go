@@ -33,8 +33,8 @@ import (
 	"strings"
 	"time"
 
-	agentutils "github.com/aaronlmathis/gosight/agent/internal/utils"
-	"github.com/aaronlmathis/gosight/shared/proto"
+	agentutils "github.com/aaronlmathis/gosight-agent/internal/utils"
+	"github.com/aaronlmathis/gosight-shared/proto"
 )
 
 // runShellCommand executes a shell command with arguments and returns the result.

@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	agentutils "github.com/aaronlmathis/gosight/agent/internal/utils"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	agentutils "github.com/aaronlmathis/gosight-agent/internal/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"

@@ -35,8 +35,8 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 
-	agentutils "github.com/aaronlmathis/gosight/agent/internal/utils"
-	"github.com/aaronlmathis/gosight/shared/model"
+	agentutils "github.com/aaronlmathis/gosight-agent/internal/utils"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 type DockerCollector struct {

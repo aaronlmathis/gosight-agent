@@ -17,8 +17,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/aaronlmathis/gosight/agent/internal/config"
-	"github.com/aaronlmathis/gosight/shared/model"
+	"github.com/aaronlmathis/gosight-agent/internal/config"
+	"github.com/aaronlmathis/gosight-shared/model"
 )
 
 // JournaldCollector is a no-op stub for Windows.
