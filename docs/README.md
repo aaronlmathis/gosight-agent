@@ -27,6 +27,8 @@ import "github.com/aaronlmathis/gosight-agent/internal/agent"
 
 Package agent provides the main functionality for the GoSight agent. It handles the initialization and management of various components such as metrics, logs, and processes. The agent is responsible for collecting data from the system and sending it to the GoSight server. It also manages the agent's identity and configuration.
 
+internal/agent/doc.go Package gosightagent is responsible for initializing and managing the Agent lifecycle. It wires together config, metric runner, log runner, and metadata generation.
+
 ## Index
 
 - [type Agent](<#Agent>)
@@ -85,6 +87,8 @@ Start initializes and starts the metric, log, and process runners. It runs each 
 ```go
 import "github.com/aaronlmathis/gosight-agent/internal/bootstrap"
 ```
+
+internal/bootstrap/doc.go Package bootstrap provides the entrypoint for initializing configuration, metadata, and the main Agent instance.
 
 server/internal/bootstrap/logger.go Initializes logger.
 
@@ -151,6 +155,8 @@ GoSight is distributed in the hope that it will be useful, but WITHOUT ANY WARRA
 You should have received a copy of the GNU General Public License along with GoSight. If not, see https://www.gnu.org/licenses/.
 
 internal/config/config.go Package config provides functions to load and manage the configuration for the GoSight agent. It handles loading the configuration from a YAML file, applying environment variable overrides, and parsing CSV strings into slices. The configuration includes settings for TLS, logging, Podman and Docker integration, custom tags, and various collection intervals for metrics, logs, and processes. The configuration is structured to allow for easy modification and extension as needed.
+
+internal/config/doc.go Package config handles reading, parsing, and validating the GoSight agent configuration file.
 
 ## Index
 
@@ -313,6 +319,8 @@ You should have received a copy of the GNU General Public License along with GoS
 
 agent/internal/grpc/connection.go Package grpcconn provides a singleton gRPC connection for the GoSight agent.
 
+internal/grpc/doc.go Package grpcconn manages the gRPC connection and stream between agent and server.
+
 ## Index
 
 - [func CloseGRPCConn\(\) error](<#CloseGRPCConn>)
@@ -343,6 +351,8 @@ GetGRPCConn returns the singleton ClientConn for the gRPC connection. It creates
 import "github.com/aaronlmathis/gosight-agent/internal/identity"
 ```
 
+internal/identity/doc.go Package agentidentity generates and persists a unique Agent ID. It ensures consistent identification across restarts.
+
 ## Index
 
 - [func LoadOrCreateAgentID\(\) \(string, error\)](<#LoadOrCreateAgentID>)
@@ -362,6 +372,8 @@ LoadOrCreateAgentID returns a stable UUID stored on disk. It creates a new one o
 ```go
 import "github.com/aaronlmathis/gosight-agent/internal/meta"
 ```
+
+internal/meta/doc.go Package meta provides utilities for building and cloning metadata for metric and log payloads.
 
 ## Index
 
@@ -557,6 +569,8 @@ ToFloat64 converts a given value to float64. It handles various numeric types su
 import "github.com/aaronlmathis/gosight-agent/internal/logs/logcollector"
 ```
 
+internal/logs/logcollector/doc.go Package logcollector contains log collection infrastructure including runners, collectors, and senders.
+
 ## Index
 
 - [type Collector](<#Collector>)
@@ -621,6 +635,8 @@ Collect runs all active collectors and returns all collected metrics as a slice.
 ```go
 import "github.com/aaronlmathis/gosight-agent/internal/logs/logrunner"
 ```
+
+internal/logs/logrunner/doc.go Package logrunner contains log collection
 
 SPDX\-License\-Identifier: GPL\-3.0\-or\-later
 
@@ -689,6 +705,8 @@ func (r *LogRunner) Run(ctx context.Context)
 ```go
 import "github.com/aaronlmathis/gosight-agent/internal/logs/logsender"
 ```
+
+internal/logs/logsender/doc.go Package logsender contains log sending
 
 ## Index
 
@@ -1120,6 +1138,8 @@ StartWorkerPool starts a pool of workers to process incoming process payloads. E
 import "github.com/aaronlmathis/gosight-agent/internal/logs/logcollector/linux"
 ```
 
+internal/logs/logcollector/linux/doc.go Package linuxcollector contains log collection
+
 SPDX\-License\-Identifier: GPL\-3.0\-or\-later
 
 Copyright \(C\) 2025 Aaron Mathis aaron.mathis@gmail.com
@@ -1249,6 +1269,8 @@ Name returns the name of the collector. This is used for logging and debugging p
 ```go
 import "github.com/aaronlmathis/gosight-agent/internal/logs/logcollector/windows"
 ```
+
+internal/logs/logcollector/windows/doc.go Package linuxcollector contains log collection
 
 ## Index
 
