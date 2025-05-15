@@ -67,7 +67,7 @@ func (s *LogSender) StartWorkerPool(ctx context.Context, queue <-chan *model.Log
 
                 //  Send (errors will be logged)
                 if err := s.SendLogs(payload); err != nil {
-                    utils.Error("Log worker #%d failed to send payload: %v", id, err)
+                    utils.Warn("Log worker #%d failed to send payload: %v", id, err)
                 }
             }
         }(i + 1)

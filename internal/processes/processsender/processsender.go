@@ -78,7 +78,7 @@ func (s *ProcessSender) manageConnection() {
     var lastPause time.Time
 
     for {
-        // 1) If pauseUntil has advanced since we last saw it, tear down our stream
+        // 1) If we've entered a new global pause window, tear down our stream
         pu := grpcconn.GetPauseUntil()
         if pu.After(lastPause) {
             utils.Info("Global disconnect: closing process stream")
@@ -91,13 +91,13 @@ func (s *ProcessSender) manageConnection() {
             lastPause = pu
         }
 
-        // 2) Wait out the pause window (if any)
+        // 2) Sleep out the pause window if it's active
         grpcconn.WaitForResume()
 
-        // 3) (Re)dial a healthy ClientConn
+        // 3) Dial (or reuse) the gRPC connection
         cc, err := grpcconn.GetGRPCConn(s.cfg)
         if err != nil {
-            utils.Warn("gRPC dial failed for processes: %v", err)
+            utils.Info("Server offline (dial): retrying in %s", backoff)
             time.Sleep(backoff)
             elapsed += backoff
             if backoff < maxBackoff {
@@ -110,14 +110,12 @@ func (s *ProcessSender) manageConnection() {
         }
         s.cc = cc
         s.client = proto.NewStreamServiceClient(cc)
-        backoff = initial
-        elapsed = 0
 
-        // 4) Open the process stream if we don’t already have one
+        // 4) Open the stream if we don’t have one already
         if s.stream == nil {
             st, err := s.client.Stream(s.ctx)
             if err != nil {
-                utils.Warn("Process stream open failed: %v", err)
+                utils.Info("Server offline (stream): retrying in %s", backoff)
                 time.Sleep(backoff)
                 elapsed += backoff
                 if backoff < maxBackoff {
@@ -130,12 +128,16 @@ func (s *ProcessSender) manageConnection() {
             }
             s.stream = st
             utils.Info("Process stream connected")
+            // reset backoff now that we're actually online
+            backoff = initial
+            elapsed = 0
         }
 
-        // 5) Short sleep before looping to pick up future disconnects
+        // 5) Short sleep so we can check for future disconnects
         time.Sleep(time.Second)
     }
 }
+
 // SendSnapshot sends a ProcessPayload; if stream is down, returns Unavailable.
 func (s *ProcessSender) SendSnapshot(payload *model.ProcessPayload) error {
     if s.stream == nil {

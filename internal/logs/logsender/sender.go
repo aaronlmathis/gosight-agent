@@ -37,6 +37,7 @@ func NewSender(ctx context.Context, cfg *config.Config) (*LogSender, error) {
 
 // manageConnection dials & opens the SubmitStream, tears it down on global disconnect,
 // and retries with exponential backoff up to totalCap, then fixed-interval.
+// in logsender/sender.go
 func (s *LogSender) manageConnection() {
     const (
         initial    = 1 * time.Second
@@ -49,46 +50,51 @@ func (s *LogSender) manageConnection() {
     var lastPause time.Time
 
     for {
-        // 1) If a new global pause was issued, tear down our stream once
+        // 1) If a new global pause began, tear down stream AND conn
         pu := grpcconn.GetPauseUntil()
         if pu.After(lastPause) {
-            utils.Info("Global disconnect: closing log stream")
+            utils.Info("Global disconnect: closing log stream and connection")
             if s.stream != nil {
                 _ = s.stream.CloseSend()
             }
+            // clear both so we re-dial completely
             s.stream = nil
+            s.cc = nil
             backoff = initial
             elapsed = 0
             lastPause = pu
         }
 
-        // Wait out any pause window
+        // 2) Sleep out the pause window
         grpcconn.WaitForResume()
 
-        // Dial (or reuse) a healthy ClientConn
-        cc, err := grpcconn.GetGRPCConn(s.cfg)
-        if err != nil {
-            utils.Warn("gRPC dial failed for logs: %v", err)
-            time.Sleep(backoff)
-            elapsed += backoff
-            if backoff < maxBackoff {
-                backoff *= 2
+        // 3) Dial (or re-use) a healthy ClientConn
+        if s.cc == nil {
+            cc, err := grpcconn.GetGRPCConn(s.cfg)
+            if err != nil {
+                utils.Info("Server offline (dial): retrying in %s", backoff)
+                time.Sleep(backoff)
+                elapsed += backoff
+                if backoff < maxBackoff {
+                    backoff *= 2
+                }
+                if elapsed >= totalCap {
+                    backoff = totalCap
+                }
+                continue
             }
-            if elapsed >= totalCap {
-                backoff = totalCap
-            }
-            continue
+            s.cc = cc
+            s.client = proto.NewLogServiceClient(cc)
+            // reset backoff on successful dial
+            backoff = initial
+            elapsed = 0
         }
-        s.cc = cc
-        s.client = proto.NewLogServiceClient(cc)
-        backoff = initial
-        elapsed = 0
 
-        // Open the SubmitStream if we don’t already have one
+        // 4) Open the SubmitStream if we don’t already have one
         if s.stream == nil {
             st, err := s.client.SubmitStream(s.ctx)
             if err != nil {
-                utils.Warn("Log stream open failed: %v", err)
+                utils.Info("Server offline (stream): retrying in %s", backoff)
                 time.Sleep(backoff)
                 elapsed += backoff
                 if backoff < maxBackoff {
@@ -101,9 +107,12 @@ func (s *LogSender) manageConnection() {
             }
             s.stream = st
             utils.Info("Log stream connected")
+            // reset backoff on successful stream open
+            backoff = initial
+            elapsed = 0
         }
 
-        // Brief pause before re-checking for new disconnects
+        // 5) Brief pause before looping to catch disconnects
         time.Sleep(time.Second)
     }
 }
@@ -115,8 +124,8 @@ func (s *LogSender) SendLogs(payload *model.LogPayload) error {
     if s.stream == nil {
         return status.Error(codes.Unavailable, "no active log stream")
     }
-
-    // --- your existing conversion logic :contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1} ---
+    // --- begin conversion ---
+    // Convert LogPayload to proto.LogPayload
     pbLogs := make([]*proto.LogEntry, 0, len(payload.Logs))
     for _, log := range payload.Logs {
         pb := &proto.LogEntry{
@@ -154,6 +163,7 @@ func (s *LogSender) SendLogs(payload *model.LogPayload) error {
     }
 
     // send
+    utils.Info("Sending %d logs to server", len(pbLogs))
     if err := s.stream.Send(req); err != nil {
         utils.Warn("Log stream send failed: %v", err)
         return err

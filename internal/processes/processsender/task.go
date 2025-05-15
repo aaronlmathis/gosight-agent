@@ -46,7 +46,7 @@ func (s *ProcessSender) StartWorkerPool(ctx context.Context, queue <-chan *model
   
           // Try to send it
           if err := s.SendSnapshot(payload); err != nil {
-            utils.Error("Process worker %d failed to send payload: %v", id, err)
+            utils.Warn("Process worker %d failed to send payload: %v", id, err)
           }
         }
       }(i + 1)

@@ -71,7 +71,7 @@ func (s *MetricSender) StartWorkerPool(ctx context.Context, queue <-chan *model.
 
                 // 4) Send (errors will be logged)
                 if err := s.SendMetrics(payload); err != nil {
-                    utils.Error("Metric worker #%d failed to send payload: %v", id, err)
+                    utils.Warn("Metric worker #%d failed to send payload: %v", id, err)
                 }
             }
         }(i + 1)

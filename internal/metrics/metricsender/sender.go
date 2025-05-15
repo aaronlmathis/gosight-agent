@@ -67,6 +67,8 @@ func NewSender(ctx context.Context, cfg *config.Config) (*MetricSender, error) {
 }
 
 // manageConnection dials/opens the stream with backoff, handles global disconnects.
+// in metricsender/sender.go
+
 func (s *MetricSender) manageConnection() {
     const (
         initial    = 1 * time.Second
@@ -78,10 +80,10 @@ func (s *MetricSender) manageConnection() {
     elapsed := time.Duration(0)
 
     for {
-        // respect any global pause
+        // 1) honor any global pause
         grpcconn.WaitForResume()
 
-        //  on a "disconnect" command: tear down _only_ the stream, reset backoff, loop
+        // 2) handle a global disconnect command
         select {
         case <-grpcconn.DisconnectNotify():
             utils.Info("Global disconnect: closing metric stream")
@@ -89,17 +91,17 @@ func (s *MetricSender) manageConnection() {
                 _ = s.stream.CloseSend()
             }
             s.stream = nil
+            // reset only *after* a full disconnect/reconnect cycle
             backoff = initial
             elapsed = 0
             continue
         default:
         }
 
-        // get (or dial) a healthy ClientConn
-        
+        // 3) ensure we have a live ClientConn (will re-dial under the hood)
         cc, err := grpcconn.GetGRPCConn(s.cfg)
         if err != nil {
-            utils.Warn("gRPC dial for metrics failed: %v", err)
+            utils.Info("Server offline (dial): retrying in %s", backoff)
             time.Sleep(backoff)
             elapsed += backoff
             if backoff < maxBackoff {
@@ -113,11 +115,11 @@ func (s *MetricSender) manageConnection() {
         s.cc = cc
         s.client = proto.NewStreamServiceClient(cc)
 
-        //  open the stream if we don’t have one yet
+        // 4) open the stream if we don’t have one yet
         if s.stream == nil {
             stream, err := s.client.Stream(s.ctx)
             if err != nil {
-                utils.Warn("Metric Stream open failed: %v", err)
+                utils.Info("Server offline (stream): retrying in %s", backoff)
                 time.Sleep(backoff)
                 elapsed += backoff
                 if backoff < maxBackoff {
@@ -130,18 +132,22 @@ func (s *MetricSender) manageConnection() {
             }
             s.stream = stream
             utils.Info("Metrics stream connected")
+            // now that we’re actually connected, reset backoff
+            backoff = initial
+            elapsed = 0
         }
 
-        // 5) block in your existing receive loop
+        // 5) block in the receive loop until error or next disconnect
         s.manageReceive()
 
-        //  on exit from receive (error or next disconnect), just close the stream
+        // 6) on exit, close just the stream
         if s.stream != nil {
             _ = s.stream.CloseSend()
         }
         s.stream = nil
 
-        //  brief backoff before retrying
+        // 7) log and back off before the next full reconnect
+        utils.Info("Metrics stream lost: retrying connect in %s", backoff)
         time.Sleep(backoff)
         elapsed += backoff
         if backoff < maxBackoff {
@@ -152,6 +158,7 @@ func (s *MetricSender) manageConnection() {
         }
     }
 }
+
 
 // SendMetrics marshals and sends a MetricPayload. If no stream, returns Unavailable.
 func (s *MetricSender) SendMetrics(payload *model.MetricPayload) error {
