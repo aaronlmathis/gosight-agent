@@ -1,30 +1,9 @@
-/*
-SPDX-License-Identifier: GPL-3.0-or-later
-
-Copyright (C) 2025 Aaron Mathis aaron.mathis@gmail.com
-
-This file is part of GoSight.
-
-GoSight is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-GoSight is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-GNU General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with GoSight. If not, see https://www.gnu.org/licenses/.
-*/
-
 package logsender
 
 import (
 	"context"
-	"fmt"
 	"sync"
+	"time"
 
 	"github.com/aaronlmathis/gosight-agent/internal/config"
 	grpcconn "github.com/aaronlmathis/gosight-agent/internal/grpc"
@@ -39,151 +18,154 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Sender holds the gRPC client and connection
+// LogSender holds the gRPC client, connection, and stream.
 type LogSender struct {
-	client proto.LogServiceClient
-	cc     *grpc.ClientConn
-	stream proto.LogService_SubmitStreamClient
-	wg     sync.WaitGroup
-	Config *config.Config
+    client proto.LogServiceClient
+    cc     *grpc.ClientConn
+    stream proto.LogService_SubmitStreamClient
+    wg     sync.WaitGroup
+    cfg    *config.Config
+    ctx    context.Context
 }
 
-// NewSender establishes a gRPC connection to the server and creates a new LogSender instance.
-// It takes a context and a configuration object as parameters.
-// The function returns a pointer to the LogSender instance and an error if any occurs during the process.
-// It also sets up a stream for sending log data to the server.
+// NewSender returns immediately and launches the background connection manager.
 func NewSender(ctx context.Context, cfg *config.Config) (*LogSender, error) {
-	clientConn, err := grpcconn.GetGRPCConn(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	client := proto.NewLogServiceClient(clientConn)
-	utils.Info("established gRPC Connection with %v", cfg.Agent.ServerURL)
-
-	//
-	stream, err := client.SubmitStream(ctx)
-	if err != nil {
-		utils.Debug("Failed to open stream: %v", err)
-		return nil, fmt.Errorf("failed to open stream: %w", err)
-	}
-
-	return &LogSender{
-		client: client,
-		cc:     clientConn,
-		stream: stream,
-		Config: cfg,
-	}, nil
-
+    s := &LogSender{ctx: ctx, cfg: cfg}
+    go s.manageConnection()
+    return s, nil
 }
 
-// Close closes the gRPC connection and waits for all workers to finish.
-// It returns an error if any occurs during the process.
-// The function uses a wait group to ensure that all workers have completed their tasks
-// before closing the connection. It also logs the status of the workers.
-func (s *LogSender) Close() error {
-	utils.Info("Closing LogSender... waiting for workers")
-	s.wg.Wait()
-	utils.Info("All LogSender workers finished")
-	return s.cc.Close()
+// manageConnection dials & opens the SubmitStream, tears it down on global disconnect,
+// and retries with exponential backoff up to totalCap, then fixed-interval.
+func (s *LogSender) manageConnection() {
+    const (
+        initial    = 1 * time.Second
+        maxBackoff = 10 * time.Second
+        totalCap   = 15 * time.Minute
+    )
+
+    backoff := initial
+    elapsed := time.Duration(0)
+    var lastPause time.Time
+
+    for {
+        // 1) If a new global pause was issued, tear down our stream once
+        pu := grpcconn.GetPauseUntil()
+        if pu.After(lastPause) {
+            utils.Info("Global disconnect: closing log stream")
+            if s.stream != nil {
+                _ = s.stream.CloseSend()
+            }
+            s.stream = nil
+            backoff = initial
+            elapsed = 0
+            lastPause = pu
+        }
+
+        // Wait out any pause window
+        grpcconn.WaitForResume()
+
+        // Dial (or reuse) a healthy ClientConn
+        cc, err := grpcconn.GetGRPCConn(s.cfg)
+        if err != nil {
+            utils.Warn("gRPC dial failed for logs: %v", err)
+            time.Sleep(backoff)
+            elapsed += backoff
+            if backoff < maxBackoff {
+                backoff *= 2
+            }
+            if elapsed >= totalCap {
+                backoff = totalCap
+            }
+            continue
+        }
+        s.cc = cc
+        s.client = proto.NewLogServiceClient(cc)
+        backoff = initial
+        elapsed = 0
+
+        // Open the SubmitStream if we don’t already have one
+        if s.stream == nil {
+            st, err := s.client.SubmitStream(s.ctx)
+            if err != nil {
+                utils.Warn("Log stream open failed: %v", err)
+                time.Sleep(backoff)
+                elapsed += backoff
+                if backoff < maxBackoff {
+                    backoff *= 2
+                }
+                if elapsed >= totalCap {
+                    backoff = totalCap
+                }
+                continue
+            }
+            s.stream = st
+            utils.Info("Log stream connected")
+        }
+
+        // Brief pause before re-checking for new disconnects
+        time.Sleep(time.Second)
+    }
 }
 
-// SendLogs sends a log payload to the gRPC server.
-// It takes a pointer to a LogPayload object as a parameter.
-// The function converts the log payload to a protobuf format and sends it to the server.
+
+// SendLogs marshals the LogPayload and sends it.
+// If no active stream, returns Unavailable so your worker backoff kicks in.
 func (s *LogSender) SendLogs(payload *model.LogPayload) error {
-	pbLogs := make([]*proto.LogEntry, 0, len(payload.Logs))
-	utils.Debug("Log Meta: %v", payload.Meta)
-	for _, log := range payload.Logs {
-		pbLog := &proto.LogEntry{
-			Timestamp: timestamppb.New(log.Timestamp),
-			Level:     log.Level,
-			Message:   log.Message,
-			Source:    log.Source,
-			Category:  log.Category,
-			Pid:       int32(log.PID),
-			Fields:    log.Fields,
-			Tags:      log.Tags,
-			Meta:      protohelper.ConvertLogMetaToProto(log.Meta),
-		}
-		//utils.Debug("Sender: LogEntry: %v", pbLog)
-		//utils.Debug("Sender:LogMeta: %v", pbLog.Meta)
+    if s.stream == nil {
+        return status.Error(codes.Unavailable, "no active log stream")
+    }
 
-		pbLogs = append(pbLogs, pbLog)
-	}
+    // --- your existing conversion logic :contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1} ---
+    pbLogs := make([]*proto.LogEntry, 0, len(payload.Logs))
+    for _, log := range payload.Logs {
+        pb := &proto.LogEntry{
+            Timestamp: timestamppb.New(log.Timestamp),
+            Level:     log.Level,
+            Message:   log.Message,
+            Source:    log.Source,
+            Category:  log.Category,
+            Pid:       int32(log.PID),
+            Fields:    log.Fields,
+            Tags:      log.Tags,
+            Meta:      protohelper.ConvertLogMetaToProto(log.Meta),
+        }
+        pbLogs = append(pbLogs, pb)
+    }
+    var metaProto *proto.Meta
+    if payload.Meta != nil {
+        metaProto = protohelper.ConvertMetaToProtoMeta(payload.Meta)
+    }
+    req := &proto.LogPayload{
+        AgentId:    payload.AgentID,
+        HostId:     payload.HostID,
+        Hostname:   payload.Hostname,
+        EndpointId: payload.EndpointID,
+        Timestamp:  timestamppb.New(payload.Timestamp),
+        Logs:       pbLogs,
+        Meta:       metaProto,
+    }
+    // --- end conversion ---
 
-	var convertedMeta *proto.Meta
+    // verify marshal
+    if _, err := goproto.Marshal(req); err != nil {
+        utils.Error("Failed to marshal LogPayload: %v", err)
+        return err
+    }
 
-	// Convert meta to proto
-	if payload.Meta != nil {
-		convertedMeta = protohelper.ConvertMetaToProtoMeta(payload.Meta)
-	}
-
-	req := &proto.LogPayload{
-		AgentId:    payload.AgentID,
-		HostId:     payload.HostID,
-		Hostname:   payload.Hostname,
-		EndpointId: payload.EndpointID,
-		Timestamp:  timestamppb.New(payload.Timestamp),
-		Logs:       pbLogs,
-		Meta:       convertedMeta,
-	}
-	// Marshal manually to check for proto errors
-	_, err := goproto.Marshal(req)
-	if err != nil {
-		utils.Error("Failed to marshal proto.LogPayload: %v", err)
-		return err
-	}
-	//utils.Debug("Marshaled LogPayload size = %d bytes", len(b))
-
-	// Try sending
-	err = s.stream.Send(req)
-	if err != nil {
-		utils.Warn("Log stream send failed: %v", err)
-
-		// Check if it's retryable
-		if stat, ok := status.FromError(err); ok {
-			if stat.Code() == codes.Unavailable || stat.Code() == codes.Canceled || stat.Code() == codes.DeadlineExceeded {
-				utils.Warn("Stream error %v detected, reconnecting...", stat.Code())
-
-				if reconnectErr := s.reconnectStream(context.Background()); reconnectErr != nil {
-					return reconnectErr
-				}
-
-				// After reconnecting, retry sending once
-				utils.Debug("Retrying after reconnect...")
-				return s.stream.Send(req)
-			}
-		}
-
-		// Other types of errors: return immediately
-		return err
-	}
-
-	utils.Debug("Streamed %d logs", len(pbLogs))
-	return nil
+    // send
+    if err := s.stream.Send(req); err != nil {
+        utils.Warn("Log stream send failed: %v", err)
+        return err
+    }
+    utils.Debug("Streamed %d logs", len(pbLogs))
+    return nil
 }
 
-// reconnectStream attempts to reconnect the log stream.
-// It closes the existing stream and opens a new one.
-// The function logs the status of the reconnection attempt and returns an error if it fails.
-// It uses the context passed as a parameter to manage the lifecycle of the stream.
-func (s *LogSender) reconnectStream(ctx context.Context) error {
-	utils.Warn("Attempting to reconnect log stream...")
-
-	// Close existing stream
-	if s.stream != nil {
-		_ = s.stream.CloseSend() // best effort
-	}
-
-	// Open a new stream
-	newStream, err := s.client.SubmitStream(ctx)
-	if err != nil {
-		utils.Error("Failed to reconnect log stream: %v", err)
-		return err
-	}
-
-	s.stream = newStream
-	utils.Info("Reconnected log stream successfully")
-	return nil
+// Close shuts down worker pool and closes the gRPC connection.
+func (s *LogSender) Close() error {
+    utils.Info("Closing LogSender... waiting for workers")
+    s.wg.Wait()
+    utils.Info("All LogSender workers finished")
+    return s.cc.Close()
 }
