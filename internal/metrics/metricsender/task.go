@@ -41,25 +41,42 @@ import (
 // parameter. The workers will run until the context is done or an error occurs.
 // The function uses a goroutine for each worker, allowing them to run concurrently.
 func (s *MetricSender) StartWorkerPool(ctx context.Context, queue <-chan *model.MetricPayload, workerCount int) {
-	for i := 0; i < workerCount; i++ {
-		s.wg.Add(1) // track worker
-		go func(id int) {
-			defer s.wg.Done() // signal on exit
-			for {
-				select {
-				case <-ctx.Done():
-					utils.Info("Worker %d shutting down", id)
-					return
-				case payload := <-queue:
-					if err := s.trySendWithBackoff(payload); err != nil {
-						utils.Error("Worker %d failed to send payload: %v", id, err)
-					}
-				}
-			}
-		}(i + 1)
-	}
-}
+    for i := 0; i < workerCount; i++ {
+        s.wg.Add(1)
+        go func(id int) {
+            defer s.wg.Done()
+            for {
+                // Exit if the runner context is done
+                select {
+                case <-ctx.Done():
+                    utils.Info("Metric worker #%d shutting down", id)
+                    return
+                default:
+                }
 
+                // If not connected, wait and retry
+                if s.stream == nil {
+                    time.Sleep(500 * time.Millisecond)
+                    continue
+                }
+
+                // Pull next payload (or exit)
+                var payload *model.MetricPayload
+                select {
+                case payload = <-queue:
+                case <-ctx.Done():
+                    utils.Info("Metric worker #%d shutting down", id)
+                    return
+                }
+
+                // 4) Send (errors will be logged)
+                if err := s.SendMetrics(payload); err != nil {
+                    utils.Warn("Metric worker #%d failed to send payload: %v", id, err)
+                }
+            }
+        }(i + 1)
+    }
+}
 // trySendWithBackoff attempts to send the metric payload to the gRPC server.
 // It uses exponential backoff for retries in case of transient errors.
 // The function will retry sending the payload up to 5 times with increasing
@@ -70,7 +87,7 @@ func (s *MetricSender) trySendWithBackoff(payload *model.MetricPayload) error {
 	backoff := 500 * time.Millisecond
 	maxBackoff := 10 * time.Second
 
-	for attempt := 1; attempt <= 5; attempt++ {
+	for attempt := 1; attempt <= 1; attempt++ {
 		err = s.SendMetrics(payload)
 		if err == nil {
 			return nil

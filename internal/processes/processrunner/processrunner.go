@@ -66,7 +66,8 @@ func NewRunner(ctx context.Context, cfg *config.Config, baseMeta *model.Meta) (*
 // This allows the user to define custom behavior when the connection to the server is lost.
 // The handler function will be called when the disconnect event occurs.
 func (r *ProcessRunner) SetDisconnectHandler(fn func()) {
-	r.ProcessSender.SetDisconnectHandler(fn)
+	//r.ProcessSender.SetDisconnectHandler(fn)
+	return
 }
 
 // Close closes the process sender and cleans up resources.

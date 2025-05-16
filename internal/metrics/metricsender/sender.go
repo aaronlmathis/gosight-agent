@@ -19,8 +19,6 @@ You should have received a copy of the GNU General Public License
 along with GoSight. If not, see https://www.gnu.org/licenses/.
 */
 
-// gosight/agent/internal/sender/sender.go
-
 package metricsender
 
 import (
@@ -37,243 +35,296 @@ import (
 	"github.com/aaronlmathis/gosight-shared/proto"
 	"github.com/aaronlmathis/gosight-shared/utils"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	goproto "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Sender holds the gRPC client and connection
+const (
+    pauseDuration = 1 * time.Minute
+    totalCap      = 15 * time.Minute
+)
+
+// MetricSender handles streaming metrics and control commands.
 type MetricSender struct {
-	client proto.StreamServiceClient
-	cc     *grpc.ClientConn
-	stream proto.StreamService_StreamClient
-	wg     sync.WaitGroup
-	cfg    *config.Config
-	ctx    context.Context
+    client proto.StreamServiceClient
+    cc     *grpc.ClientConn
+    stream proto.StreamService_StreamClient
+    wg     sync.WaitGroup
+    cfg    *config.Config
+    ctx    context.Context
 }
 
-// NewSender establishes a gRPC connection
-// and creates a stream for sending metrics
-// It returns a MetricSender instance
+// NewSender returns immediately and starts a background connection manager.
 func NewSender(ctx context.Context, cfg *config.Config) (*MetricSender, error) {
-
-	clientConn, err := grpcconn.GetGRPCConn(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create gRPC client
-	// and establish a stream for sending metrics
-	client := proto.NewStreamServiceClient(clientConn)
-	utils.Info("established gRPC Connection with %v", cfg.Agent.ServerURL)
-
-	//
-	stream, err := client.Stream(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open stream: %w", err)
-	}
-
-	sender := &MetricSender{
-		ctx:    ctx,
-		client: client,
-		cc:     clientConn,
-		stream: stream,
-		cfg:    cfg,
-	}
-	go sender.receiveResponses()
-
-	return sender, nil
+    s := &MetricSender{
+        ctx: ctx,
+        cfg: cfg,
+    }
+    go s.manageConnection()
+    return s, nil
 }
 
-// Close waits for all workers to finish and closes the gRPC connection
-// It returns an error if the connection could not be closed
-// or if any worker failed
-func (s *MetricSender) Close() error {
-	utils.Info("Closing MetricSender... waiting for workers")
-	s.wg.Wait()
-	utils.Info("All MetricSender workers finished")
-	return s.cc.Close()
+// manageConnection dials/opens the stream with backoff, handles global disconnects.
+// in metricsender/sender.go
+
+func (s *MetricSender) manageConnection() {
+    const (
+        initial    = 1 * time.Second
+        maxBackoff = 10 * time.Second
+        totalCap   = 15 * time.Minute
+    )
+
+    backoff := initial
+    elapsed := time.Duration(0)
+
+    for {
+        // 1) honor any global pause
+        grpcconn.WaitForResume()
+
+        // 2) handle a global disconnect command
+        select {
+        case <-grpcconn.DisconnectNotify():
+            utils.Info("Global disconnect: closing metric stream")
+            if s.stream != nil {
+                _ = s.stream.CloseSend()
+            }
+            s.stream = nil
+            // reset only *after* a full disconnect/reconnect cycle
+            backoff = initial
+            elapsed = 0
+            continue
+        default:
+        }
+
+        // 3) ensure we have a live ClientConn (will re-dial under the hood)
+        cc, err := grpcconn.GetGRPCConn(s.cfg)
+        if err != nil {
+            utils.Info("Server offline (dial): retrying in %s", backoff)
+            time.Sleep(backoff)
+            elapsed += backoff
+            if backoff < maxBackoff {
+                backoff *= 2
+            }
+            if elapsed >= totalCap {
+                backoff = totalCap
+            }
+            continue
+        }
+        s.cc = cc
+        s.client = proto.NewStreamServiceClient(cc)
+
+        // 4) open the stream if we don’t have one yet
+        if s.stream == nil {
+            stream, err := s.client.Stream(s.ctx)
+            if err != nil {
+                utils.Info("Server offline (stream): retrying in %s", backoff)
+                time.Sleep(backoff)
+                elapsed += backoff
+                if backoff < maxBackoff {
+                    backoff *= 2
+                }
+                if elapsed >= totalCap {
+                    backoff = totalCap
+                }
+                continue
+            }
+            s.stream = stream
+            utils.Info("Metrics stream connected")
+            // now that we’re actually connected, reset backoff
+            backoff = initial
+            elapsed = 0
+        }
+
+        // 5) block in the receive loop until error or next disconnect
+        s.manageReceive()
+
+        // 6) on exit, close just the stream
+        if s.stream != nil {
+            _ = s.stream.CloseSend()
+        }
+        s.stream = nil
+
+        // 7) log and back off before the next full reconnect
+        utils.Info("Metrics stream lost: retrying connect in %s", backoff)
+        time.Sleep(backoff)
+        elapsed += backoff
+        if backoff < maxBackoff {
+            backoff *= 2
+        }
+        if elapsed >= totalCap {
+            backoff = totalCap
+        }
+    }
 }
 
-// SendMetrics sends a MetricPayload to the server
-// It converts the MetricPayload to a protobuf message
-// and sends it over the gRPC stream
+
+// SendMetrics marshals and sends a MetricPayload. If no stream, returns Unavailable.
 func (s *MetricSender) SendMetrics(payload *model.MetricPayload) error {
-	pbMetrics := make([]*proto.Metric, 0, len(payload.Metrics))
-	for _, m := range payload.Metrics {
-		pbMetric := &proto.Metric{
-			Name:         m.Name,
-			Namespace:    m.Namespace,
-			Subnamespace: m.SubNamespace,
-			Timestamp:    timestamppb.New(m.Timestamp),
+    if s.stream == nil {
+        return status.Error(codes.Unavailable, "no active metrics stream")
+    }
 
-			Value:             m.Value,
-			Unit:              m.Unit,
-			StorageResolution: int32(m.StorageResolution),
-			Type:              m.Type,
-			Dimensions:        m.Dimensions,
-		}
-		if m.StatisticValues != nil {
-			pbMetric.StatisticValues = &proto.StatisticValues{
-				Minimum:     m.StatisticValues.Minimum,
-				Maximum:     m.StatisticValues.Maximum,
-				SampleCount: int32(m.StatisticValues.SampleCount),
-				Sum:         m.StatisticValues.Sum,
-			}
-		}
-		pbMetrics = append(pbMetrics, pbMetric)
-	}
-	var convertedMeta *proto.Meta
+    pbMetrics := make([]*proto.Metric, 0, len(payload.Metrics))
+    for _, m := range payload.Metrics {
+        pm := &proto.Metric{
+            Name:         m.Name,
+            Namespace:    m.Namespace,
+            Subnamespace: m.SubNamespace,
+            Timestamp:    timestamppb.New(m.Timestamp),
+            Value:             m.Value,
+            Unit:              m.Unit,
+            StorageResolution: int32(m.StorageResolution),
+            Type:              m.Type,
+            Dimensions:        m.Dimensions,
+        }
+        if sv := m.StatisticValues; sv != nil {
+            pm.StatisticValues = &proto.StatisticValues{
+                Minimum:     sv.Minimum,
+                Maximum:     sv.Maximum,
+                SampleCount: int32(sv.SampleCount),
+                Sum:         sv.Sum,
+            }
+        }
+        pbMetrics = append(pbMetrics, pm)
+    }
 
-	// Convert meta to proto
-	if payload.Meta != nil {
-		convertedMeta = protohelper.ConvertMetaToProtoMeta(payload.Meta)
-	}
-	//utils.Debug("Proto Meta Tags: %+v", convertedMeta)
+    var metaProto *proto.Meta
+    if payload.Meta != nil {
+        metaProto = protohelper.ConvertMetaToProtoMeta(payload.Meta)
+    }
 
-	metricPayload := &proto.MetricPayload{
-		AgentId:    payload.AgentID,
-		HostId:     payload.HostID,
-		Hostname:   payload.Hostname,
-		EndpointId: payload.EndpointID,
-		Timestamp:  timestamppb.New(payload.Timestamp),
-		Metrics:    pbMetrics,
-		Meta:       convertedMeta,
-	}
+    metricPayload := &proto.MetricPayload{
+        AgentId:    payload.AgentID,
+        HostId:     payload.HostID,
+        Hostname:   payload.Hostname,
+        EndpointId: payload.EndpointID,
+        Timestamp:  timestamppb.New(payload.Timestamp),
+        Metrics:    pbMetrics,
+        Meta:       metaProto,
+    }
 
-	b, err := goproto.Marshal(metricPayload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal MetricPayload: %w", err)
-	}
+    b, err := goproto.Marshal(metricPayload)
+    if err != nil {
+        return fmt.Errorf("failed to marshal MetricPayload: %w", err)
+    }
 
-	streamPayload := &proto.StreamPayload{
-		Payload: &proto.StreamPayload_Metric{
-			Metric: &proto.MetricWrapper{
-				RawPayload: b,
-			},
-		},
-	}
-	sendCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+    streamPayload := &proto.StreamPayload{
+        Payload: &proto.StreamPayload_Metric{
+            Metric: &proto.MetricWrapper{RawPayload: b},
+        },
+    }
+    // --- end conversion ---
 
-	sendCh := make(chan error, 1)
-	go func() {
-		sendCh <- s.stream.Send(streamPayload)
-	}()
+    // send with timeout
+    sendCtx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+    defer cancel()
+    errCh := make(chan error, 1)
+    go func() { errCh <- s.stream.Send(streamPayload) }()
 
-	select {
-	case err := <-sendCh:
-		if err != nil {
-			return fmt.Errorf("stream send failed: %w", err)
-		}
-		return nil
-	case <-sendCtx.Done():
-		return fmt.Errorf("stream send timeout")
-	}
+    select {
+    case err := <-errCh:
+        if err != nil {
+            return fmt.Errorf("stream send failed: %w", err)
+        }
+        return nil
+    case <-sendCtx.Done():
+        return fmt.Errorf("stream send timeout")
+    }
 }
 
-// receiveResponses listens for commands sent from server.
-// It handles the commands and sends back responses.
-// It runs in a separate goroutine and handles reconnections
-// in case of errors.
-func (s *MetricSender) receiveResponses() {
-	for {
-		resp, err := s.stream.Recv()
-		if err != nil {
-			select {
-			case <-s.ctx.Done():
-				utils.Info("Context canceled, exiting receive loop cleanly")
-				return
-			default:
-				utils.Error("Stream receive error: %v", err)
+// manageReceive handles incoming commands; on a disconnect command, broadcasts global pause.
+func (s *MetricSender) manageReceive() {
+    for {
+        resp, err := s.stream.Recv()
+        if err != nil {
+            if s.ctx.Err() != nil {
+                utils.Info("Receive loop canceled")
+            } else {
+                utils.Error("Stream receive error: %v", err)
+            }
+            return
+        }
 
-				if recErr := s.reconnectStream(); recErr != nil {
-					utils.Error("Failed to reconnect stream: %v", recErr)
-					return
-				}
-				utils.Info("Successfully reconnected stream after failure")
-				continue
-			}
-		}
+        if cmd := resp.Command; cmd != nil &&
+            cmd.CommandType == "control" &&
+            cmd.Command == "disconnect" {
 
-		utils.Debug("Received StreamResponse: status=%s", resp.Status)
-		utils.Debug("Response Payload: %v", resp)
-		if resp.Command != nil {
-			utils.Info("Received CommandRequest: type=%s command=%s", resp.Command.CommandType, resp.Command.Command)
-			result := command.HandleCommand(s.ctx, resp.Command)
-			if result != nil {
-				s.sendCommandResponseWithRetry(result)
-			}
-		}
-	}
+            utils.Info("Received global disconnect; pausing all senders for %v", pauseDuration)
+            grpcconn.PauseConnections(pauseDuration)
+            return
+        }
+
+        if resp.Command != nil {
+            utils.Info("Handling command %s/%s", resp.Command.CommandType, resp.Command.Command)
+            if result := command.HandleCommand(s.ctx, resp.Command); result != nil {
+                s.sendCommandResponseWithRetry(result)
+            }
+        }
+    }
 }
 
-// reconnectStream attempts to reconnect the gRPC stream.
-// It closes the old connection and creates a new one.
-// It returns an error if the reconnection fails.
+// Close waits for any in-flight work then closes the connection.
+func (s *MetricSender) Close() error {
+    utils.Info("Closing MetricSender... waiting for workers")
+    s.wg.Wait()
+    utils.Info("All workers done")
+    return s.cc.Close()
+}
+
+// reconnectStream re-dials and reopens the stream for sendCommandResponseWithRetry.
 func (s *MetricSender) reconnectStream() error {
-	var err error
-	// Close old connection safely if you want (optional)
-	if s.cc != nil {
-		_ = s.cc.Close()
-	}
+    if s.cc != nil {
+        _ = s.cc.Close()
+    }
+    ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
+    defer cancel()
 
-	ctx, cancel := context.WithTimeout(s.ctx, 10*time.Second)
-	defer cancel()
+    conn, err := grpcconn.GetGRPCConn(s.cfg)
+    if err != nil {
+        return fmt.Errorf("failed to reconnect: %w", err)
+    }
+    s.cc = conn
+    s.client = proto.NewStreamServiceClient(conn)
 
-	// Rebuild gRPC client connection
-	conn, err := grpcconn.GetGRPCConn(s.cfg) // Use your same logic
-	if err != nil {
-		return fmt.Errorf("failed to reconnect gRPC: %w", err)
-	}
-
-	s.cc = conn
-	s.client = proto.NewStreamServiceClient(conn)
-
-	stream, err := s.client.Stream(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to reopen stream: %w", err)
-	}
-
-	s.stream = stream
-	return nil
+    stream, err := s.client.Stream(ctx)
+    if err != nil {
+        return fmt.Errorf("failed to reopen stream: %w", err)
+    }
+    s.stream = stream
+    return nil
 }
 
-// sendCommandResponseWithRetry attempts to send a CommandResponse with retries
-// It uses exponential backoff for retries
-// It sends the CommandResponse over the gRPC stream
-// It handles errors and timeouts
+// sendCommandResponseWithRetry retries CommandResponse up to 3 times with backoff.
 func (s *MetricSender) sendCommandResponseWithRetry(resp *proto.CommandResponse) {
-	const maxAttempts = 3
+    const maxAttempts = 3
+    for attempt := 1; attempt <= maxAttempts; attempt++ {
+        sendCtx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+        defer cancel()
 
-	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		sendCtx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
-		defer cancel()
+        done := make(chan error, 1)
+        go func() {
+            done <- s.stream.Send(&proto.StreamPayload{
+                Payload: &proto.StreamPayload_CommandResponse{CommandResponse: resp},
+            })
+        }()
 
-		done := make(chan error, 1)
-		go func() {
-			done <- s.stream.Send(&proto.StreamPayload{
-				Payload: &proto.StreamPayload_CommandResponse{
-					CommandResponse: resp,
-				},
-			})
-		}()
-
-		select {
-		case err := <-done:
-			if err != nil {
-				utils.Warn("Send attempt %d failed: %v", attempt, err)
-				_ = s.reconnectStream()
-				time.Sleep(time.Duration(attempt) * time.Second)
-				continue
-			}
-			utils.Debug("CommandResponse sent on attempt %d", attempt)
-			return
-		case <-sendCtx.Done():
-			utils.Warn("Send attempt %d timed out", attempt)
-			_ = s.reconnectStream()
-			time.Sleep(time.Duration(attempt) * time.Second)
-		}
-	}
-
-	utils.Error("Failed to send CommandResponse after %d attempts: %v", maxAttempts, resp)
+        select {
+        case err := <-done:
+            if err != nil {
+                utils.Warn("CommandResponse send attempt %d failed: %v", attempt, err)
+                _ = s.reconnectStream()
+                time.Sleep(time.Duration(attempt) * time.Second)
+                continue
+            }
+            utils.Debug("CommandResponse sent on attempt %d", attempt)
+            return
+        case <-sendCtx.Done():
+            utils.Warn("CommandResponse send attempt %d timed out", attempt)
+            _ = s.reconnectStream()
+            time.Sleep(time.Duration(attempt) * time.Second)
+        }
+    }
+    utils.Error("Failed to send CommandResponse after %d attempts", maxAttempts)
 }
