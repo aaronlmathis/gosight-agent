@@ -43,153 +43,154 @@ import (
 )
 
 const (
-    pauseDuration = 1 * time.Minute
-    totalCap      = 15 * time.Minute
+	pauseDuration = 1 * time.Minute
+	totalCap      = 15 * time.Minute
 )
 
-// ProcessSender handles streaming process snapshots and reacts to global disconnects.
+// ProcessSender handles streaming process snapshots
 type ProcessSender struct {
-    cfg    *config.Config
-    ctx    context.Context
-    cc     *grpc.ClientConn
-    client proto.StreamServiceClient
-    stream proto.StreamService_StreamClient
-    wg     sync.WaitGroup
+	cfg    *config.Config
+	ctx    context.Context
+	cc     *grpc.ClientConn
+	client proto.StreamServiceClient
+	stream proto.StreamService_StreamClient
+	wg     sync.WaitGroup
 }
 
-// NewSender returns immediately and starts manageConnection in background.
+// NewSender initializes a new ProcessSender and starts the connection manager.
+// It returns immediately and launches the background connection manager.
 func NewSender(ctx context.Context, cfg *config.Config) (*ProcessSender, error) {
-    s := &ProcessSender{ctx: ctx, cfg: cfg}
-    go s.manageConnection()
-    return s, nil
+	s := &ProcessSender{ctx: ctx, cfg: cfg}
+	go s.manageConnection()
+	return s, nil
 }
 
 // manageConnection dials + opens the Stream, tears down on global disconnect,
 // and retries with exponential backoff up to totalCap.
 func (s *ProcessSender) manageConnection() {
-    const (
-        initial    = 1 * time.Second
-        maxBackoff = 10 * time.Second
-        totalCap   = 15 * time.Minute
-    )
+	const (
+		initial    = 1 * time.Second
+		maxBackoff = 10 * time.Second
+		totalCap   = 15 * time.Minute
+	)
 
-    backoff := initial
-    elapsed := time.Duration(0)
-    var lastPause time.Time
+	backoff := initial
+	elapsed := time.Duration(0)
+	var lastPause time.Time
 
-    for {
-        // 1) If we've entered a new global pause window, tear down our stream
-        pu := grpcconn.GetPauseUntil()
-        if pu.After(lastPause) {
-            utils.Info("Global disconnect: closing process stream")
-            if s.stream != nil {
-                _ = s.stream.CloseSend()
-            }
-            s.stream = nil
-            backoff = initial
-            elapsed = 0
-            lastPause = pu
-        }
+	for {
+		// 1) If we've entered a new global pause window, tear down our stream
+		pu := grpcconn.GetPauseUntil()
+		if pu.After(lastPause) {
+			utils.Info("Global disconnect: closing process stream")
+			if s.stream != nil {
+				_ = s.stream.CloseSend()
+			}
+			s.stream = nil
+			backoff = initial
+			elapsed = 0
+			lastPause = pu
+		}
 
-        // 2) Sleep out the pause window if it's active
-        grpcconn.WaitForResume()
+		// 2) Sleep out the pause window if it's active
+		grpcconn.WaitForResume()
 
-        // 3) Dial (or reuse) the gRPC connection
-        cc, err := grpcconn.GetGRPCConn(s.cfg)
-        if err != nil {
-            utils.Info("Server offline (dial): retrying in %s", backoff)
-            time.Sleep(backoff)
-            elapsed += backoff
-            if backoff < maxBackoff {
-                backoff *= 2
-            }
-            if elapsed >= totalCap {
-                backoff = totalCap
-            }
-            continue
-        }
-        s.cc = cc
-        s.client = proto.NewStreamServiceClient(cc)
+		// 3) Dial (or reuse) the gRPC connection
+		cc, err := grpcconn.GetGRPCConn(s.cfg)
+		if err != nil {
+			utils.Info("Server offline (dial): retrying in %s", backoff)
+			time.Sleep(backoff)
+			elapsed += backoff
+			if backoff < maxBackoff {
+				backoff *= 2
+			}
+			if elapsed >= totalCap {
+				backoff = totalCap
+			}
+			continue
+		}
+		s.cc = cc
+		s.client = proto.NewStreamServiceClient(cc)
 
-        // 4) Open the stream if we don’t have one already
-        if s.stream == nil {
-            st, err := s.client.Stream(s.ctx)
-            if err != nil {
-                utils.Info("Server offline (stream): retrying in %s", backoff)
-                time.Sleep(backoff)
-                elapsed += backoff
-                if backoff < maxBackoff {
-                    backoff *= 2
-                }
-                if elapsed >= totalCap {
-                    backoff = totalCap
-                }
-                continue
-            }
-            s.stream = st
-            utils.Info("Process stream connected")
-            // reset backoff now that we're actually online
-            backoff = initial
-            elapsed = 0
-        }
+		// 4) Open the stream if we don’t have one already
+		if s.stream == nil {
+			st, err := s.client.Stream(s.ctx)
+			if err != nil {
+				utils.Info("Server offline (stream): retrying in %s", backoff)
+				time.Sleep(backoff)
+				elapsed += backoff
+				if backoff < maxBackoff {
+					backoff *= 2
+				}
+				if elapsed >= totalCap {
+					backoff = totalCap
+				}
+				continue
+			}
+			s.stream = st
+			utils.Info("Process stream connected")
+			// reset backoff now that we're actually online
+			backoff = initial
+			elapsed = 0
+		}
 
-        // 5) Short sleep so we can check for future disconnects
-        time.Sleep(time.Second)
-    }
+		// 5) Short sleep so we can check for future disconnects
+		time.Sleep(time.Second)
+	}
 }
 
 // SendSnapshot sends a ProcessPayload; if stream is down, returns Unavailable.
 func (s *ProcessSender) SendSnapshot(payload *model.ProcessPayload) error {
-    if s.stream == nil {
-        return status.Error(codes.Unavailable, "no active process stream")
-    }
+	if s.stream == nil {
+		return status.Error(codes.Unavailable, "no active process stream")
+	}
 
-    // marshal process payload into protobuf
-    pb := &proto.ProcessPayload{
-        AgentId:    payload.AgentID,
-        HostId:     payload.HostID,
-        Hostname:   payload.Hostname,
-        EndpointId: payload.EndpointID,
-        Timestamp:  timestamppb.New(payload.Timestamp),
-        Meta:       protohelper.ConvertMetaToProtoMeta(payload.Meta),
-    }
-    for _, p := range payload.Processes {
-        pb.Processes = append(pb.Processes, &proto.ProcessInfo{
-            Pid:        int32(p.PID),
-            Ppid:       int32(p.PPID),
-            User:       p.User,
-            Executable: p.Executable,
-            Cmdline:    p.Cmdline,
-            CpuPercent: p.CPUPercent,
-            MemPercent: p.MemPercent,
-            Threads:    int32(p.Threads),
-            StartTime:  timestamppb.New(p.StartTime),
-            Tags:       p.Tags,
-        })
-    }
-    b, err := goproto.Marshal(pb)
-    if err != nil {
-        return fmt.Errorf("marshal ProcessPayload: %w", err)
-    }
+	// marshal process payload into protobuf
+	pb := &proto.ProcessPayload{
+		AgentId:    payload.AgentID,
+		HostId:     payload.HostID,
+		Hostname:   payload.Hostname,
+		EndpointId: payload.EndpointID,
+		Timestamp:  timestamppb.New(payload.Timestamp),
+		Meta:       protohelper.ConvertMetaToProtoMeta(payload.Meta),
+	}
+	for _, p := range payload.Processes {
+		pb.Processes = append(pb.Processes, &proto.ProcessInfo{
+			Pid:        int32(p.PID),
+			Ppid:       int32(p.PPID),
+			User:       p.User,
+			Executable: p.Executable,
+			Cmdline:    p.Cmdline,
+			CpuPercent: p.CPUPercent,
+			MemPercent: p.MemPercent,
+			Threads:    int32(p.Threads),
+			StartTime:  timestamppb.New(p.StartTime),
+			Tags:       p.Tags,
+		})
+	}
+	b, err := goproto.Marshal(pb)
+	if err != nil {
+		return fmt.Errorf("marshal ProcessPayload: %w", err)
+	}
 
-    sp := &proto.StreamPayload{
-        Payload: &proto.StreamPayload_Process{
-            Process: &proto.ProcessWrapper{RawPayload: b},
-        },
-    }
-    // send without additional retries
-    if err := s.stream.Send(sp); err != nil {
-        return fmt.Errorf("stream send failed: %w", err)
-    }
-    return nil
+	sp := &proto.StreamPayload{
+		Payload: &proto.StreamPayload_Process{
+			Process: &proto.ProcessWrapper{RawPayload: b},
+		},
+	}
+	// send without additional retries
+	if err := s.stream.Send(sp); err != nil {
+		return fmt.Errorf("stream send failed: %w", err)
+	}
+	return nil
 }
 
 // Close waits for workers then closes the gRPC connection.
 func (s *ProcessSender) Close() error {
-    utils.Info("Closing ProcessSender...")
-    s.wg.Wait()
-    if s.cc != nil {
-        return s.cc.Close()
-    }
-    return nil
+	utils.Info("Closing ProcessSender...")
+	s.wg.Wait()
+	if s.cc != nil {
+		return s.cc.Close()
+	}
+	return nil
 }
