@@ -62,7 +62,7 @@ func (c *NetworkCollector) Collect(_ context.Context) ([]model.Metric, error) {
 
 	interfaces, err := net.IOCounters(true)
 	if err != nil {
-		utils.Error("❌ Failed to get network IO counters: %v", err)
+		utils.Error("Failed to get network IO counters: %v", err)
 		return nil, err
 	}
 

@@ -79,7 +79,7 @@ func (s *ProcessSender) manageConnection() {
 	var lastPause time.Time
 
 	for {
-		// 1) If we've entered a new global pause window, tear down our stream
+		// If we've entered a new global pause window, tear down our stream
 		pu := grpcconn.GetPauseUntil()
 		if pu.After(lastPause) {
 			utils.Info("Global disconnect: closing process stream")
@@ -92,7 +92,7 @@ func (s *ProcessSender) manageConnection() {
 			lastPause = pu
 		}
 
-		// 2) Sleep out the pause window if it's active
+		// sleep out the pause window if it's active
 		grpcconn.WaitForResume()
 
 		// 3) Dial (or reuse) the gRPC connection
@@ -112,7 +112,7 @@ func (s *ProcessSender) manageConnection() {
 		s.cc = cc
 		s.client = proto.NewStreamServiceClient(cc)
 
-		// 4) Open the stream if we don’t have one already
+		// Open the stream if we don’t have one already
 		if s.stream == nil {
 			st, err := s.client.Stream(s.ctx)
 			if err != nil {
@@ -134,7 +134,7 @@ func (s *ProcessSender) manageConnection() {
 			elapsed = 0
 		}
 
-		// 5) Short sleep so we can check for future disconnects
+		// Short sleep so we can check for future disconnects
 		time.Sleep(time.Second)
 	}
 }
