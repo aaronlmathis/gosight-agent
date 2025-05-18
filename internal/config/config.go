@@ -41,13 +41,21 @@ import (
 // batch size, buffer size, number of workers, and maximum message size.
 
 type LogCollectionConfig struct {
-	Interval   time.Duration `yaml:"interval"`
-	Sources    []string      `yaml:"sources"`
-	Services   []string      `yaml:"services"`
-	BatchSize  int           `yaml:"batch_size"`
-	BufferSize int           `yaml:"buffer_size"`
-	Workers    int           `yaml:"workers"`
-	MessageMax int           `yaml:"message_max"`
+	Interval    time.Duration     `yaml:"interval"`
+	Sources     []string          `yaml:"sources"`
+	Services    []string          `yaml:"services"`
+	BatchSize   int               `yaml:"batch_size"`
+	BufferSize  int               `yaml:"buffer_size"`
+	Workers     int               `yaml:"workers"`
+	MessageMax  int               `yaml:"message_max"`
+	EventViewer EventViewerConfig `yaml:"eventviewer"`
+}
+
+// EventViewerConfig defines the configuration for Windows Event Log collection
+type EventViewerConfig struct {
+	CollectAll      bool     `yaml:"collect_all"`      // Whether to collect from all available channels
+	Channels        []string `yaml:"channels"`         // List of channels to collect from if CollectAll is false
+	ExcludeChannels []string `yaml:"exclude_channels"` // Channels to explicitly exclude
 }
 
 // MetricCollectionConfig defines the configuration for metric collection
