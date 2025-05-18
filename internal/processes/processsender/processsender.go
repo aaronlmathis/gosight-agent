@@ -70,16 +70,15 @@ func NewSender(ctx context.Context, cfg *config.Config) (*ProcessSender, error) 
 func (s *ProcessSender) manageConnection() {
 	const (
 		initial    = 1 * time.Second
-		maxBackoff = 10 * time.Second
-		totalCap   = 15 * time.Minute
+		maxBackoff = 15 * time.Minute // Changed from 10s to 15min
+		factor     = 2                // Multiplier for exponential backoff
 	)
 
 	backoff := initial
-	elapsed := time.Duration(0)
 	var lastPause time.Time
 
 	for {
-		// 1) If we've entered a new global pause window, tear down our stream
+		// If we've entered a new global pause window, tear down our stream
 		pu := grpcconn.GetPauseUntil()
 		if pu.After(lastPause) {
 			utils.Info("Global disconnect: closing process stream")
@@ -88,42 +87,41 @@ func (s *ProcessSender) manageConnection() {
 			}
 			s.stream = nil
 			backoff = initial
-			elapsed = 0
 			lastPause = pu
 		}
 
-		// 2) Sleep out the pause window if it's active
+		// Sleep out the pause window if it's active
 		grpcconn.WaitForResume()
 
-		// 3) Dial (or reuse) the gRPC connection
+		// Dial (or reuse) the gRPC connection
 		cc, err := grpcconn.GetGRPCConn(s.cfg)
 		if err != nil {
 			utils.Info("Server offline (dial): retrying in %s", backoff)
 			time.Sleep(backoff)
-			elapsed += backoff
+			// Calculate next backoff duration
 			if backoff < maxBackoff {
-				backoff *= 2
-			}
-			if elapsed >= totalCap {
-				backoff = totalCap
+				backoff = time.Duration(float64(backoff) * float64(factor))
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
 			}
 			continue
 		}
 		s.cc = cc
 		s.client = proto.NewStreamServiceClient(cc)
 
-		// 4) Open the stream if we don’t have one already
+		// Open the stream if we don't have one already
 		if s.stream == nil {
 			st, err := s.client.Stream(s.ctx)
 			if err != nil {
 				utils.Info("Server offline (stream): retrying in %s", backoff)
 				time.Sleep(backoff)
-				elapsed += backoff
+				// Calculate next backoff duration
 				if backoff < maxBackoff {
-					backoff *= 2
-				}
-				if elapsed >= totalCap {
-					backoff = totalCap
+					backoff = time.Duration(float64(backoff) * float64(factor))
+					if backoff > maxBackoff {
+						backoff = maxBackoff
+					}
 				}
 				continue
 			}
@@ -131,10 +129,9 @@ func (s *ProcessSender) manageConnection() {
 			utils.Info("Process stream connected")
 			// reset backoff now that we're actually online
 			backoff = initial
-			elapsed = 0
 		}
 
-		// 5) Short sleep so we can check for future disconnects
+		// Short sleep so we can check for future disconnects
 		time.Sleep(time.Second)
 	}
 }
