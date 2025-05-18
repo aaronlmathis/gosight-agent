@@ -42,12 +42,11 @@ func NewSender(ctx context.Context, cfg *config.Config) (*LogSender, error) {
 func (s *LogSender) manageConnection() {
 	const (
 		initial    = 1 * time.Second
-		maxBackoff = 10 * time.Second
-		totalCap   = 15 * time.Minute
+		maxBackoff = 15 * time.Minute // Changed from 10s to 15min
+		factor     = 2                // Multiplier for exponential backoff
 	)
 
 	backoff := initial
-	elapsed := time.Duration(0)
 	var lastPause time.Time
 
 	for {
@@ -61,7 +60,6 @@ func (s *LogSender) manageConnection() {
 
 			s.stream = nil
 			backoff = initial
-			elapsed = 0
 			lastPause = pu
 		}
 
@@ -72,31 +70,30 @@ func (s *LogSender) manageConnection() {
 		if err != nil {
 			utils.Info("Server offline (dial): retrying in %s", backoff)
 			time.Sleep(backoff)
-			elapsed += backoff
-			backoff *= 2
-			if backoff > maxBackoff {
-				backoff = maxBackoff
-			}
-			if elapsed >= totalCap {
-				backoff = totalCap
+			// Calculate next backoff duration
+			if backoff < maxBackoff {
+				backoff = time.Duration(float64(backoff) * float64(factor))
+				if backoff > maxBackoff {
+					backoff = maxBackoff
+				}
 			}
 			continue
 		}
 		s.cc = cc
 		s.client = proto.NewLogServiceClient(cc)
 
-		// Open the SubmitStream if we don’t already have one
+		// Open the SubmitStream if we don't already have one
 		if s.stream == nil {
 			st, err := s.client.SubmitStream(s.ctx)
 			if err != nil {
 				utils.Info("Server offline (stream): retrying in %s", backoff)
 				time.Sleep(backoff)
-				elapsed += backoff
+				// Calculate next backoff duration
 				if backoff < maxBackoff {
-					backoff *= 2
-				}
-				if elapsed >= totalCap {
-					backoff = totalCap
+					backoff = time.Duration(float64(backoff) * float64(factor))
+					if backoff > maxBackoff {
+						backoff = maxBackoff
+					}
 				}
 				continue
 			}
@@ -104,10 +101,9 @@ func (s *LogSender) manageConnection() {
 			utils.Info("Log stream connected")
 			// reset on successful stream open
 			backoff = initial
-			elapsed = 0
 		}
 
-		// 5) Brief pause to catch any new disconnects
+		// Brief pause to catch any new disconnects
 		time.Sleep(time.Second)
 	}
 }
