@@ -316,7 +316,7 @@ func mapPriorityToLevel(priority string) string {
 	case "3": // err
 		return "error" // Often mapped to error as well
 	case "4": // warning
-		return "warn"
+		return "warning"
 	case "5": // notice
 		return "info" // Often mapped to info
 	case "6": // informational
@@ -359,7 +359,7 @@ func buildLogEntry(entry *sdjournal.JournalEntry, maxSize int) model.LogEntry {
 		}
 	}
 	// Classify the category based on SYSLOG_IDENTIFIER or SYSTEMD_UNIT using the classifyCategory function
-	source := classifySource(fields["SYSLOG_IDENTIFIER"], fields["SYSTEMD_UNIT"])
+	category := classifyCategory(fields["SYSLOG_IDENTIFIER"], fields["SYSTEMD_UNIT"])
 
 	// Try to extact user information from fields
 	user := extractUserFromFields(entry.Fields)
@@ -396,8 +396,8 @@ func buildLogEntry(entry *sdjournal.JournalEntry, maxSize int) model.LogEntry {
 		Timestamp: timestamp,
 		Level:     mapPriorityToLevel(entry.Fields["PRIORITY"]),
 		Message:   msg,
-		Source:    source,   // e.g., systemd, auth, gosight
-		Category:  "system", // e.g., systemd unit or slice
+		Source:    "systemd",
+		Category:  category,
 		PID:       parsePID(entry.Fields["_PID"]),
 		Fields:    fields, // Richer metadata goes here
 		Tags:      tags,   // Minimal, high-value tags
@@ -468,7 +468,7 @@ func extractUserFromFields(fields map[string]string) string {
 // This mapping is used to categorize logs into predefined sources
 
 // journaldCategoryMap is a mapping of common journald identifiers to sources.
-var journaldSourceMap = []struct {
+var journaldCategoryMap = []struct {
 	MatchKey string // lowercased value of SYSLOG_IDENTIFIER or SYSTEMD_UNIT
 	Source   string
 }{
@@ -493,10 +493,10 @@ var journaldSourceMap = []struct {
 	{"containerd", "container"},
 
 	// Application servers
-	{"nginx", "app"},
-	{"apache2", "app"},
-	{"postgres", "app"},
-	{"mysqld", "app"},
+	{"nginx", "application"},
+	{"apache2", "application"},
+	{"postgres", "application"},
+	{"mysqld", "application"},
 
 	// System / OS
 	{"systemd", "system"},
@@ -509,10 +509,10 @@ var journaldSourceMap = []struct {
 }
 
 // classifyCategory determines the category of a log entry based on its syslog identifier or systemd unit.
-func classifySource(syslogID, unit string) string {
+func classifyCategory(syslogID, unit string) string {
 	inputs := []string{strings.ToLower(syslogID), strings.ToLower(unit)}
 	for _, input := range inputs {
-		for _, rule := range journaldSourceMap {
+		for _, rule := range journaldCategoryMap {
 			if strings.Contains(input, rule.MatchKey) {
 				return rule.Source
 			}
