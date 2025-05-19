@@ -10,19 +10,19 @@ agent:
       buffer_size: 500 # Max size of the buffer before sending
       workers: 2
       interval: 30s
-    metric_collection:
+  metric_collection:
+    workers: 2
+    interval: 2s
+    sources:
+      - cpu
+      - mem
+      - host
+      - disk
+      - net
+      - podman
+  process_collection:
       workers: 2
       interval: 2s
-      sources:
-        - cpu
-        - mem
-        - host
-        - disk
-        - net
-        - podman
-    process_collection:
-        workers: 2
-        interval: 2s
 
   environment: "dev" # (dev/prod)
 
