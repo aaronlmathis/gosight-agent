@@ -65,9 +65,9 @@ func NewRegistry(cfg *config.Config) *LogRegistry {
 				continue
 			}
 			reg.LogCollectors["security"] = linuxcollector.NewSecurityLogCollector(cfg)
-		case "eventViewer":
+		case "eventviewer":
 			if runtime.GOOS == "windows" {
-				reg.LogCollectors["eventViewer"] = windowscollector.NewEventViewerCollector(cfg, "System")
+				reg.LogCollectors["eventviewer"] = windowscollector.NewEventViewerCollector(cfg)
 			}
 		default:
 			utils.Warn("Unknown collector: %s (skipping) \n", name)

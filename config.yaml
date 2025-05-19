@@ -4,12 +4,64 @@ agent:
   log_collection:
       sources:
         - journald
+        - eventviewer
           #- security
       batch_size:  50     # Number of log entries to send in a payload
       message_max: 10000   # Max size of messages before truncating (like in journald)
       buffer_size: 500 # Max size of the buffer before sending
       workers: 2
       interval: 30s
+      # Windows Event Log configuration
+      eventviewer:
+        # Set to true to collect from all available channels
+        collect_all: false
+        # List of channels to collect from (if collect_all is false)
+        channels:
+          # System logs
+          - System
+          - Security
+          - Application
+          # Windows logs
+          - "Microsoft-Windows-Windows Defender/Operational"
+          - "Microsoft-Windows-WindowsUpdateClient/Operational"
+          - "Microsoft-Windows-PowerShell/Operational"
+          - "Microsoft-Windows-Sysmon/Operational"
+          - "Microsoft-Windows-TaskScheduler/Operational"
+          - "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational"
+          - "Microsoft-Windows-Security-Auditing/Operational"
+          # Application logs
+          - "Microsoft-Windows-PrintService/Operational"
+          - "Microsoft-Windows-DNS-Client/Operational"
+          - "Microsoft-Windows-DHCP-Client/Operational"
+          # Service logs
+          - "Microsoft-Windows-NetworkProfile/Operational"
+          - "Microsoft-Windows-RemoteDesktopServices-RdpCoreTS/Operational"
+          - "Microsoft-Windows-BitLocker/BitLocker Management"
+          - "Microsoft-Windows-CodeIntegrity/Operational"
+          # Hardware logs
+          - "Microsoft-Windows-Storage-Storport/Operational"
+          - "Microsoft-Windows-Kernel-Boot/Operational"
+          - "Microsoft-Windows-Kernel-PnP/Configuration"
+          # Security logs
+          - "Microsoft-Windows-AppLocker/EXE and DLL"
+          - "Microsoft-Windows-AppLocker/MSI and Script"
+          - "Microsoft-Windows-Windows Firewall With Advanced Security/Firewall"
+          # Active Directory logs (if applicable)
+          - "Directory Service"
+          - "DFS Replication"
+          - "DNS Server"
+        # Channels to explicitly exclude (applies even if collect_all is true)
+        exclude_channels:
+          - "Microsoft-Windows-Diagnosis-*"
+          - "Microsoft-Windows-DeviceSync*"
+          - "Microsoft-Windows-Containers*"
+          - "Microsoft-Windows-HelloForBusiness*"
+          - "Microsoft-Windows-Help*"
+          - "Microsoft-Windows-Audio*"
+          - "Microsoft-Windows-International*"
+          - "Microsoft-Windows-UserPnp*"
+          - "Microsoft-Windows-Shell-Core*"
+          - "Microsoft-Windows-Mobile*"
   metric_collection:
     workers: 2
     interval: 2s
