@@ -7,7 +7,7 @@ GoSight Agent is a secure, modular telemetry collector written in Go. It gathers
 ## Features
 
 - Host + container metrics (CPU, memory, disk, network, uptime)
-- Log collectors (journald, syslog, flat files)
+- Log collectors (journald, eventlog, flat files)
 - Runtime-safe command execution (optional)
 - Tag-based metadata for endpoints and containers
 - Streaming metrics + logs via gRPC with auto-reconnect
