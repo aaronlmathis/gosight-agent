@@ -135,7 +135,7 @@ func (r *LogRunner) Run(ctx context.Context) {
 			if len(logBatches) == 0 {
 				continue
 			}
-
+ 
 			// set job tag for victoriametrics.
 			r.Meta.Tags["job"] = "gosight-logs"
 
@@ -145,6 +145,7 @@ func (r *LogRunner) Run(ctx context.Context) {
 			// Generate Endpoint ID
 			endpointID := utils.GenerateEndpointID(meta)
 			meta.EndpointID = endpointID
+			meta.Kind = "host"
 			meta.Tags["instance"] = meta.Hostname
 
 			//utils.Debug("Processing %d log batches for sending.", len(logBatches))

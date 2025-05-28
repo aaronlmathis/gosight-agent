@@ -157,6 +157,7 @@ func (r *MetricRunner) Run(ctx context.Context) {
 
 					// Set EndpointID for meta
 					containerMeta.EndpointID = utils.GenerateEndpointID(containerMeta)
+					containerMeta.Kind = "container"
 
 				} else {
 					// Host metrics, collect them separately
@@ -175,7 +176,9 @@ func (r *MetricRunner) Run(ctx context.Context) {
 
 				// Set EndpointID for meta
 				hostMeta.EndpointID = utils.GenerateEndpointID(hostMeta)
+				hostMeta.Kind = "host"
 
+				
 				payload := model.MetricPayload{
 					AgentID:    hostMeta.AgentID,
 					HostID:     hostMeta.HostID,
