@@ -9,6 +9,7 @@
 - [logs](./logs/README.md)
 - [meta](./meta/README.md)
 - [metrics](./metrics/README.md)
+- [otelconvert](./otelconvert/README.md)
 - [processes](./processes/README.md)
 - [protohelper](./protohelper/README.md)
 - [utils](./utils/README.md)

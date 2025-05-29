@@ -19,8 +19,8 @@ You should have received a copy of the GNU General Public License
 along with GoSight. If not, see https://www.gnu.org/licenses/.
 */
 
-// // gosight/agent/internal/meta/tags.go
-// // Sets up standard tags for metrics.
+// // gosight/agent/internal/meta/Labels.go
+// // Sets up standard Labels for metrics.
 
 package meta
 
@@ -32,35 +32,35 @@ import (
 	"github.com/aaronlmathis/gosight-shared/model"
 )
 
-// BuildStandardTags sets required labels for consistent metric identity and filtering.
+// BuildStandardLabels sets required labels for consistent metric identity and filtering.
 // It sets the "namespace" and "job" labels, which are used to identify the source of the metric.
-func BuildStandardTags(meta *model.Meta, m model.Metric, isContainer bool, startTime time.Time) {
-	if meta.Tags == nil {
-		meta.Tags = make(map[string]string)
+func BuildStandardLabels(meta *model.Meta, m model.Metric, isContainer bool, startTime time.Time) {
+	if meta.Labels == nil {
+		meta.Labels = make(map[string]string)
 	}
 	// Tag with agent start time for use calculating agent uptime on server
-	meta.Tags["agent_start_time"] = fmt.Sprintf("%d", startTime.Unix())
+	meta.Labels["agent_start_time"] = fmt.Sprintf("%d", startTime.Unix())
 
 	// Contextual source of the metric
-	meta.Tags["namespace"] = strings.ToLower(m.Namespace)
-	meta.Tags["subnamespace"] = strings.ToLower(m.SubNamespace)
+	meta.Labels["namespace"] = strings.ToLower(m.Namespace)
+	meta.Labels["subnamespace"] = strings.ToLower(m.SubNamespace)
 
 	// Producer of metric becomes the "job"
 	if isContainer {
-		meta.Tags["job"] = "gosight-container"
+		meta.Labels["job"] = "gosight-container"
 
 		if meta.ContainerName != "" {
-			meta.Tags["instance"] = meta.ContainerName
+			meta.Labels["instance"] = meta.ContainerName
 
 		} else if meta.ContainerID != "" {
-			meta.Tags["container_id"] = meta.ContainerID
+			meta.Labels["container_id"] = meta.ContainerID
 
 		} else {
-			meta.Tags["instance"] = "unknown-container"
+			meta.Labels["instance"] = "unknown-container"
 		}
 	} else {
-		meta.Tags["job"] = "gosight-agent"
-		meta.Tags["instance"] = meta.Hostname
+		meta.Labels["job"] = "gosight-agent"
+		meta.Labels["instance"] = meta.Hostname
 
 	}
 

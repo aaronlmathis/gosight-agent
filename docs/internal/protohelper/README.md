@@ -10,11 +10,10 @@ import "github.com/aaronlmathis/gosight-agent/internal/protohelper"
 
 - [func ConvertLogMetaToProto\(m \*model.LogMeta\) \*proto.LogMeta](<#ConvertLogMetaToProto>)
 - [func ConvertMetaToProtoMeta\(m \*model.Meta\) \*proto.Meta](<#ConvertMetaToProtoMeta>)
-- [func ConvertToProtoPayload\(payload model.MetricPayload\) \*proto.MetricPayload](<#ConvertToProtoPayload>)
 
 
 <a name="ConvertLogMetaToProto"></a>
-## func [ConvertLogMetaToProto](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/protohelper/convert.go#L80>)
+## func [ConvertLogMetaToProto](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/protohelper/convert.go#L35>)
 
 ```go
 func ConvertLogMetaToProto(m *model.LogMeta) *proto.LogMeta
@@ -23,19 +22,10 @@ func ConvertLogMetaToProto(m *model.LogMeta) *proto.LogMeta
 
 
 <a name="ConvertMetaToProtoMeta"></a>
-## func [ConvertMetaToProtoMeta](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/protohelper/convert.go#L103>)
+## func [ConvertMetaToProtoMeta](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/protohelper/convert.go#L58>)
 
 ```go
 func ConvertMetaToProtoMeta(m *model.Meta) *proto.Meta
-```
-
-
-
-<a name="ConvertToProtoPayload"></a>
-## func [ConvertToProtoPayload](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/protohelper/convert.go#L36>)
-
-```go
-func ConvertToProtoPayload(payload model.MetricPayload) *proto.MetricPayload
 ```
 
 

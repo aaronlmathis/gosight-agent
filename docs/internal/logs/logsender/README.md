@@ -18,9 +18,9 @@ internal/logs/logsender/doc.go Package logsender contains log sending
 
 
 <a name="LogSender"></a>
-## type [LogSender](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logsender/sender.go#L22-L29>)
+## type [LogSender](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logsender/sender.go#L20-L26>)
 
-LogSender holds the gRPC client, connection, and stream.
+LogSender holds the gRPC client and connection for OTLP logs.
 
 ```go
 type LogSender struct {
@@ -29,7 +29,7 @@ type LogSender struct {
 ```
 
 <a name="NewSender"></a>
-### func [NewSender](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logsender/sender.go#L33>)
+### func [NewSender](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logsender/sender.go#L30>)
 
 ```go
 func NewSender(ctx context.Context, cfg *config.Config) (*LogSender, error)
@@ -38,7 +38,7 @@ func NewSender(ctx context.Context, cfg *config.Config) (*LogSender, error)
 NewSender initializes a new LogSender and starts the connection manager. It returns immediately and launches the background connection manager.
 
 <a name="LogSender.Close"></a>
-### func \(\*LogSender\) [Close](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logsender/sender.go#L166>)
+### func \(\*LogSender\) [Close](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logsender/sender.go#L152>)
 
 ```go
 func (s *LogSender) Close() error
@@ -47,13 +47,13 @@ func (s *LogSender) Close() error
 Close shuts down worker pool and closes the gRPC connection.
 
 <a name="LogSender.SendLogs"></a>
-### func \(\*LogSender\) [SendLogs](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logsender/sender.go#L113>)
+### func \(\*LogSender\) [SendLogs](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logsender/sender.go#L123>)
 
 ```go
 func (s *LogSender) SendLogs(payload *model.LogPayload) error
 ```
 
-SendLogs marshals the LogPayload and sends it. If no active stream, returns Unavailable so your worker backoff kicks in.
+SendLogs converts the LogPayload to OTLP format and sends it via unary call. If no active client, returns Unavailable so your worker backoff kicks in.
 
 <a name="LogSender.StartWorkerPool"></a>
 ### func \(\*LogSender\) [StartWorkerPool](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logsender/task.go#L39>)

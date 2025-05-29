@@ -38,9 +38,9 @@ func AppendMetricsToFile(payload *model.MetricPayload, filename string) error
 AppendMetricsToFile appends the given MetricPayload to a file in JSON format. It creates the directory if it doesn't exist. The file is opened in append mode, and the payload is written as a newline\-delimited JSON object. This is useful for debugging purposes, allowing you to inspect the metrics being sent.
 
 <a name="MetricSender"></a>
-## type [MetricSender](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/metrics/metricsender/sender.go#L50-L57>)
+## type [MetricSender](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/metrics/metricsender/sender.go#L49-L61>)
 
-MetricSender handles streaming metrics and control commands.
+MetricSender handles OTLP metrics and control commands via dual connections.
 
 ```go
 type MetricSender struct {
@@ -49,7 +49,7 @@ type MetricSender struct {
 ```
 
 <a name="NewSender"></a>
-### func [NewSender](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/metrics/metricsender/sender.go#L60>)
+### func [NewSender](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/metrics/metricsender/sender.go#L64>)
 
 ```go
 func NewSender(ctx context.Context, cfg *config.Config) (*MetricSender, error)
@@ -58,7 +58,7 @@ func NewSender(ctx context.Context, cfg *config.Config) (*MetricSender, error)
 NewSender returns immediately and starts a background connection manager.
 
 <a name="MetricSender.Close"></a>
-### func \(\*MetricSender\) [Close](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/metrics/metricsender/sender.go#L265>)
+### func \(\*MetricSender\) [Close](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/metrics/metricsender/sender.go#L252>)
 
 ```go
 func (s *MetricSender) Close() error
@@ -67,13 +67,13 @@ func (s *MetricSender) Close() error
 Close waits for any in\-flight work then closes the connection.
 
 <a name="MetricSender.SendMetrics"></a>
-### func \(\*MetricSender\) [SendMetrics](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/metrics/metricsender/sender.go#L160>)
+### func \(\*MetricSender\) [SendMetrics](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/metrics/metricsender/sender.go#L191>)
 
 ```go
 func (s *MetricSender) SendMetrics(payload *model.MetricPayload) error
 ```
 
-SendMetrics marshals and sends a MetricPayload. If no stream, returns Unavailable.
+SendMetrics converts to OTLP and sends via unary call.
 
 <a name="MetricSender.StartWorkerPool"></a>
 ### func \(\*MetricSender\) [StartWorkerPool](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/metrics/metricsender/task.go#L43>)

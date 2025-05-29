@@ -312,7 +312,7 @@ func (c *SecurityLogCollector) parseLogLine(line string) model.LogEntry {
 		Source:    source,
 		Category:  "auth",
 		PID:       0, // PID extraction would need more parsing
-		Tags: map[string]string{
+		Labels: map[string]string{
 			"log_path":     c.logPath,
 			"hostname_log": hostname,
 		},
