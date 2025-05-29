@@ -1,5 +1,5 @@
 agent:
-  server_url: "localhost:50051"    # domain/ip:port
+  server_url: "localhost:4317"    # domain/ip:port
   host: "dev-machine-01"    # Hostname of agent machine
   log_collection:
       sources:

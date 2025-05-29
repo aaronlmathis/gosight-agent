@@ -37,41 +37,41 @@ import (
 // to the gRPC server. The number of workers is determined by the workerCount
 // parameter. The workers will run until the context is done or an error occurs.
 func (s *LogSender) StartWorkerPool(ctx context.Context, queue <-chan *model.LogPayload, workerCount int) {
-    for i := 0; i < workerCount; i++ {
-        s.wg.Add(1)
-        go func(id int) {
-            defer s.wg.Done()
-            for {
-                //  Exit if the runner context is done
-                select {
-                case <-ctx.Done():
-                    utils.Info("Log worker #%d shutting down", id)
-                    return
-                default:
-                }
+	for i := 0; i < workerCount; i++ {
+		s.wg.Add(1)
+		go func(id int) {
+			defer s.wg.Done()
+			for {
+				//  Exit if the runner context is done
+				select {
+				case <-ctx.Done():
+					utils.Info("Log worker #%d shutting down", id)
+					return
+				default:
+				}
 
-                //  If not connected, wait and retry
-                if s.stream == nil {
-                    time.Sleep(500 * time.Millisecond)
-                    continue
-                }
+				//  If not connected, wait and retry
+				if s.client == nil { // Changed from s.stream to s.client
+					time.Sleep(500 * time.Millisecond)
+					continue
+				}
 
-                //  Pull next payload (or exit)
-                var payload *model.LogPayload
-                select {
-                case payload = <-queue:
-                case <-ctx.Done():
-                    utils.Info("Log worker #%d shutting down", id)
-                    return
-                }
+				//  Pull next payload (or exit)
+				var payload *model.LogPayload
+				select {
+				case payload = <-queue:
+				case <-ctx.Done():
+					utils.Info("Log worker #%d shutting down", id)
+					return
+				}
 
-                //  Send (errors will be logged)
-                if err := s.SendLogs(payload); err != nil {
-                    utils.Warn("Log worker #%d failed to send payload: %v", id, err)
-                }
-            }
-        }(i + 1)
-    }
+				//  Send (errors will be logged)
+				if err := s.SendLogs(payload); err != nil {
+					utils.Warn("Log worker #%d failed to send payload: %v", id, err)
+				}
+			}
+		}(i + 1)
+	}
 }
 
 // trySendWithBackoff attempts to send the log payload to the server with exponential backoff.

@@ -30,15 +30,14 @@ import (
 	"github.com/aaronlmathis/gosight-agent/internal/command"
 	"github.com/aaronlmathis/gosight-agent/internal/config"
 	grpcconn "github.com/aaronlmathis/gosight-agent/internal/grpc"
-	"github.com/aaronlmathis/gosight-agent/internal/protohelper"
+	"github.com/aaronlmathis/gosight-agent/internal/otelconvert"
 	"github.com/aaronlmathis/gosight-shared/model"
 	"github.com/aaronlmathis/gosight-shared/proto"
 	"github.com/aaronlmathis/gosight-shared/utils"
+	colmetricpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	goproto "google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const (
@@ -46,14 +45,19 @@ const (
 	totalCap      = 15 * time.Minute
 )
 
-// MetricSender handles streaming metrics and control commands.
+// MetricSender handles OTLP metrics and control commands via dual connections.
 type MetricSender struct {
-	client proto.StreamServiceClient
-	cc     *grpc.ClientConn
-	stream proto.StreamService_StreamClient
-	wg     sync.WaitGroup
-	cfg    *config.Config
-	ctx    context.Context
+	// OTLP metrics client
+	metricsClient colmetricpb.MetricsServiceClient
+
+	// Legacy stream client for commands only
+	streamClient proto.StreamServiceClient
+	stream       proto.StreamService_StreamClient
+
+	cc  *grpc.ClientConn
+	wg  sync.WaitGroup
+	cfg *config.Config
+	ctx context.Context
 }
 
 // NewSender returns immediately and starts a background connection manager.
@@ -66,42 +70,53 @@ func NewSender(ctx context.Context, cfg *config.Config) (*MetricSender, error) {
 	return s, nil
 }
 
-// manageConnection dials/opens the stream with backoff, handles global disconnects.
-// in metricsender/sender.go
-
+// manageConnection dials/opens connections with backoff, handles global disconnects.
 func (s *MetricSender) manageConnection() {
 	const (
 		initial    = 1 * time.Second
-		maxBackoff = 15 * time.Minute // Changed from 10s to 15min
-		factor     = 2                // Multiplier for exponential backoff
+		maxBackoff = 15 * time.Minute
+		factor     = 2
 	)
 
 	backoff := initial
 
 	for {
-		// honor any global pause
+		// Check for context cancellation
+		select {
+		case <-s.ctx.Done():
+			utils.Info("Metric connection manager shutting down")
+			return
+		default:
+		}
+
+		// Honor any global pause
 		grpcconn.WaitForResume()
 
-		// 2) handle a global disconnect command
+		// Handle a global disconnect command
 		select {
 		case <-grpcconn.DisconnectNotify():
-			utils.Info("Global disconnect: closing metric stream")
+			utils.Info("Global disconnect: closing metric connections")
 			if s.stream != nil {
 				_ = s.stream.CloseSend()
 			}
 			s.stream = nil
-			// reset only *after* a full disconnect/reconnect cycle
+			s.metricsClient = nil
 			backoff = initial
 			continue
 		default:
 		}
 
-		// ensure we have a live ClientConn (will re-dial under the hood)
+		// Ensure we have a live ClientConn
 		cc, err := grpcconn.GetGRPCConn(s.cfg)
 		if err != nil {
 			utils.Info("Server offline (dial): retrying in %s", backoff)
-			time.Sleep(backoff)
-			// Calculate next backoff duration
+
+			select {
+			case <-time.After(backoff):
+			case <-s.ctx.Done():
+				return
+			}
+
 			if backoff < maxBackoff {
 				backoff = time.Duration(float64(backoff) * float64(factor))
 				if backoff > maxBackoff {
@@ -110,16 +125,27 @@ func (s *MetricSender) manageConnection() {
 			}
 			continue
 		}
-		s.cc = cc
-		s.client = proto.NewStreamServiceClient(cc)
 
-		// open the stream if we don't have one yet
+		s.cc = cc
+
+		// Create OTLP metrics client
+		s.metricsClient = colmetricpb.NewMetricsServiceClient(cc)
+
+		// Create legacy stream client for commands
+		s.streamClient = proto.NewStreamServiceClient(cc)
+
+		// Open the command stream if we don't have one yet
 		if s.stream == nil {
-			stream, err := s.client.Stream(s.ctx)
+			stream, err := s.streamClient.Stream(s.ctx)
 			if err != nil {
-				utils.Info("Server offline (stream): retrying in %s", backoff)
-				time.Sleep(backoff)
-				// Calculate next backoff duration
+				utils.Info("Server offline (command stream): retrying in %s", backoff)
+				s.metricsClient = nil
+				select {
+				case <-time.After(backoff):
+				case <-s.ctx.Done():
+					return
+				}
+
 				if backoff < maxBackoff {
 					backoff = time.Duration(float64(backoff) * float64(factor))
 					if backoff > maxBackoff {
@@ -129,24 +155,29 @@ func (s *MetricSender) manageConnection() {
 				continue
 			}
 			s.stream = stream
-			utils.Info("Metrics stream connected")
-			// now that we're actually connected, reset backoff
+			utils.Info("Metrics OTLP client and command stream connected")
 			backoff = initial
 		}
 
-		// block in the receive loop until error or next disconnect
+		// Block in the receive loop until error or next disconnect
 		s.manageReceive()
 
-		// 6) on exit, close just the stream
+		// On exit, close just the stream
 		if s.stream != nil {
 			_ = s.stream.CloseSend()
 		}
 		s.stream = nil
+		s.metricsClient = nil
 
-		// 7) log and back off before the next full reconnect
-		utils.Info("Metrics stream lost: retrying connect in %s", backoff)
-		time.Sleep(backoff)
-		// Calculate next backoff duration
+		// Log and back off before the next full reconnect
+		utils.Info("Metrics connections lost: retrying connect in %s", backoff)
+
+		select {
+		case <-time.After(backoff):
+		case <-s.ctx.Done():
+			return
+		}
+
 		if backoff < maxBackoff {
 			backoff = time.Duration(float64(backoff) * float64(factor))
 			if backoff > maxBackoff {
@@ -156,81 +187,37 @@ func (s *MetricSender) manageConnection() {
 	}
 }
 
-// SendMetrics marshals and sends a MetricPayload. If no stream, returns Unavailable.
+// SendMetrics converts to OTLP and sends via unary call.
 func (s *MetricSender) SendMetrics(payload *model.MetricPayload) error {
-	if s.stream == nil {
-		return status.Error(codes.Unavailable, "no active metrics stream")
+	if s.metricsClient == nil {
+		return status.Error(codes.Unavailable, "no active OTLP metrics client")
 	}
 
-	pbMetrics := make([]*proto.Metric, 0, len(payload.Metrics))
-	for _, m := range payload.Metrics {
-		pm := &proto.Metric{
-			Name:              m.Name,
-			Namespace:         m.Namespace,
-			Subnamespace:      m.SubNamespace,
-			Timestamp:         timestamppb.New(m.Timestamp),
-			Value:             m.Value,
-			Unit:              m.Unit,
-			StorageResolution: int32(m.StorageResolution),
-			Type:              m.Type,
-			Dimensions:        m.Dimensions,
-		}
-		if sv := m.StatisticValues; sv != nil {
-			pm.StatisticValues = &proto.StatisticValues{
-				Minimum:     sv.Minimum,
-				Maximum:     sv.Maximum,
-				SampleCount: int32(sv.SampleCount),
-				Sum:         sv.Sum,
-			}
-		}
-		pbMetrics = append(pbMetrics, pm)
+	// Convert to OTLP format using our conversion function
+	otlpReq := otelconvert.ConvertToOTLPMetrics(payload)
+	if otlpReq == nil {
+		utils.Warn("Failed to convert metrics to OTLP format")
+		return status.Error(codes.InvalidArgument, "failed to convert metrics to OTLP")
 	}
 
-	var metaProto *proto.Meta
-	if payload.Meta != nil {
-		metaProto = protohelper.ConvertMetaToProtoMeta(payload.Meta)
-	}
+	// Send via unary call (OTLP standard)
+	utils.Info("Sending %d metrics to server via OTLP", len(payload.Metrics))
 
-	metricPayload := &proto.MetricPayload{
-		AgentId:    payload.AgentID,
-		HostId:     payload.HostID,
-		Hostname:   payload.Hostname,
-		EndpointId: payload.EndpointID,
-		Timestamp:  timestamppb.New(payload.Timestamp),
-		Metrics:    pbMetrics,
-		Meta:       metaProto,
-	}
-
-	b, err := goproto.Marshal(metricPayload)
-	if err != nil {
-		return fmt.Errorf("failed to marshal MetricPayload: %w", err)
-	}
-
-	streamPayload := &proto.StreamPayload{
-		Payload: &proto.StreamPayload_Metric{
-			Metric: &proto.MetricWrapper{RawPayload: b},
-		},
-	}
-	// --- end conversion ---
-
-	// send with timeout
-	sendCtx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	sendCtx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
 	defer cancel()
-	errCh := make(chan error, 1)
-	go func() { errCh <- s.stream.Send(streamPayload) }()
 
-	select {
-	case err := <-errCh:
-		if err != nil {
-			return fmt.Errorf("stream send failed: %w", err)
-		}
-		return nil
-	case <-sendCtx.Done():
-		return fmt.Errorf("stream send timeout")
+	_, err := s.metricsClient.Export(sendCtx, otlpReq)
+	if err != nil {
+		utils.Warn("OTLP metrics export failed: %v", err)
+		return err
 	}
+
+	utils.Debug("Successfully exported %d metrics via OTLP", len(payload.Metrics))
+	return nil
 }
 
 // manageReceive handles incoming commands; on a disconnect command, broadcasts global pause.
+// (COMPLETELY PRESERVED - no changes needed for command handling)
 func (s *MetricSender) manageReceive() {
 	for {
 		resp, err := s.stream.Recv()
@@ -266,10 +253,14 @@ func (s *MetricSender) Close() error {
 	utils.Info("Closing MetricSender... waiting for workers")
 	s.wg.Wait()
 	utils.Info("All workers done")
-	return s.cc.Close()
+	if s.cc != nil {
+		return s.cc.Close()
+	}
+	return nil
 }
 
 // reconnectStream re-dials and reopens the stream for sendCommandResponseWithRetry.
+// (PRESERVED - needed for command responses)
 func (s *MetricSender) reconnectStream() error {
 	if s.cc != nil {
 		_ = s.cc.Close()
@@ -282,9 +273,10 @@ func (s *MetricSender) reconnectStream() error {
 		return fmt.Errorf("failed to reconnect: %w", err)
 	}
 	s.cc = conn
-	s.client = proto.NewStreamServiceClient(conn)
+	s.streamClient = proto.NewStreamServiceClient(conn)
+	s.metricsClient = colmetricpb.NewMetricsServiceClient(conn)
 
-	stream, err := s.client.Stream(ctx)
+	stream, err := s.streamClient.Stream(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to reopen stream: %w", err)
 	}
@@ -293,6 +285,7 @@ func (s *MetricSender) reconnectStream() error {
 }
 
 // sendCommandResponseWithRetry retries CommandResponse up to 3 times with backoff.
+// (COMPLETELY PRESERVED - no changes needed)
 func (s *MetricSender) sendCommandResponseWithRetry(resp *proto.CommandResponse) {
 	const maxAttempts = 3
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
