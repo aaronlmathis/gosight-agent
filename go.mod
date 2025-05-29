@@ -3,12 +3,13 @@ module github.com/aaronlmathis/gosight-agent
 go 1.23.7
 
 require (
-	github.com/aaronlmathis/gosight-shared v0.0.0-20250513191055-0380956c32cb
+	github.com/aaronlmathis/gosight-shared v0.0.0-20250528161720-224302fe7b66
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/docker/docker v25.0.6+incompatible
 	github.com/google/uuid v1.6.0
 	github.com/nxadm/tail v1.4.11
 	github.com/shirou/gopsutil/v4 v4.25.3
+	go.opentelemetry.io/proto/otlp v1.6.0
 	golang.org/x/sys v0.32.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
@@ -28,6 +29,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
@@ -50,9 +52,12 @@ require (
 	golang.org/x/net v0.39.0 // indirect
 	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250428153025-10db94c68c34 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250428153025-10db94c68c34 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
 )
 
 replace github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
+
+replace github.com/aaronlmathis/gosight-shared => ../gosight-shared

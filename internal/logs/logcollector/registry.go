@@ -19,9 +19,6 @@ You should have received a copy of the GNU General Public License
 along with GoSight. If not, see https://www.gnu.org/licenses/.
 */
 
-// gosight/agent/internal/logs/logcollector/registry.go
-// registry.go - loads and initializes all enabled log collectors at runtime.
-
 package logcollector
 
 import (
