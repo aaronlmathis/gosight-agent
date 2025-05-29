@@ -3,7 +3,7 @@ module github.com/aaronlmathis/gosight-agent
 go 1.23.7
 
 require (
-	github.com/aaronlmathis/gosight-shared v0.0.0-20250528161720-224302fe7b66
+	github.com/aaronlmathis/gosight-shared v0.0.0-20250529123024-6108da123de9
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/docker/docker v25.0.6+incompatible
 	github.com/google/uuid v1.6.0

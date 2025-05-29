@@ -11,7 +11,7 @@ internal/logs/logcollector/windows/doc.go Package linuxcollector contains log co
 ## Index
 
 - [type EventViewerCollector](<#EventViewerCollector>)
-  - [func NewEventViewerCollector\(\_ \*config.Config, \_ string\) \*EventViewerCollector](<#NewEventViewerCollector>)
+  - [func NewEventViewerCollector\(\_ \*config.Config\) \*EventViewerCollector](<#NewEventViewerCollector>)
   - [func \(e \*EventViewerCollector\) Close\(\) error](<#EventViewerCollector.Close>)
   - [func \(e \*EventViewerCollector\) Collect\(\_ context.Context\) \(\[\]\[\]model.LogEntry, error\)](<#EventViewerCollector.Collect>)
   - [func \(e \*EventViewerCollector\) Name\(\) string](<#EventViewerCollector.Name>)
@@ -30,7 +30,7 @@ type EventViewerCollector struct{}
 ### func [NewEventViewerCollector](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/logs/logcollector/windows/eventviewer_stub.go#L15>)
 
 ```go
-func NewEventViewerCollector(_ *config.Config, _ string) *EventViewerCollector
+func NewEventViewerCollector(_ *config.Config) *EventViewerCollector
 ```
 
 

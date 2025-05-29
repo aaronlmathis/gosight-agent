@@ -162,7 +162,7 @@ func (s *ProcessSender) SendSnapshot(payload *model.ProcessPayload) error {
 			MemPercent: p.MemPercent,
 			Threads:    int32(p.Threads),
 			StartTime:  timestamppb.New(p.StartTime),
-			Tags:       p.Tags,
+			Labels:     p.Labels,
 		})
 	}
 	b, err := goproto.Marshal(pb)

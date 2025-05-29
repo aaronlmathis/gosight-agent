@@ -106,7 +106,7 @@ func (r *ProcessRunner) Run(ctx context.Context) {
 				continue
 			}
 
-			metaCopy := meta.CloneMetaWithTags(r.Meta, nil)
+			metaCopy := meta.CloneMetaWithLabels(r.Meta, nil)
 			metaCopy.EndpointID = utils.GenerateEndpointID(metaCopy)
 
 			payload := &model.ProcessPayload{

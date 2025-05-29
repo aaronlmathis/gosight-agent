@@ -266,8 +266,8 @@ func convertMetaToResource(meta *model.Meta) *resourcepb.Resource {
 	add("host.mac", meta.MACAddress)
 	add("network.interface", meta.NetworkInterface)
 
-	// Tags
-	for k, v := range meta.Tags {
+	// Labels
+	for k, v := range meta.Labels {
 		add("tag."+k, v)
 	}
 
@@ -309,7 +309,7 @@ func convertLogPayloadToResource(payload *model.LogPayload) *resourcepb.Resource
 	return &resourcepb.Resource{Attributes: attrs}
 }
 
-// convertLogAttributes converts log entry fields, tags, and metadata to OTLP attributes
+// convertLogAttributes converts log entry fields, Labels, and metadata to OTLP attributes
 func convertLogAttributes(logEntry model.LogEntry) []*commonpb.KeyValue {
 	attrs := []*commonpb.KeyValue{}
 
@@ -341,8 +341,8 @@ func convertLogAttributes(logEntry model.LogEntry) []*commonpb.KeyValue {
 		add("field."+k, v)
 	}
 
-	// Add tags
-	for k, v := range logEntry.Tags {
+	// Add Labels
+	for k, v := range logEntry.Labels {
 		add("tag."+k, v)
 	}
 

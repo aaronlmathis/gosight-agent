@@ -29,13 +29,14 @@ internal/config/doc.go Package config handles reading, parsing, and validating t
 - [func SplitCSV\(input string\) \[\]string](<#SplitCSV>)
 - [type Config](<#Config>)
   - [func LoadConfig\(path string\) \(\*Config, error\)](<#LoadConfig>)
+- [type EventViewerConfig](<#EventViewerConfig>)
 - [type LogCollectionConfig](<#LogCollectionConfig>)
 - [type MetricCollectionConfig](<#MetricCollectionConfig>)
 - [type ProcessCollectionConfig](<#ProcessCollectionConfig>)
 
 
 <a name="ApplyEnvOverrides"></a>
-## func [ApplyEnvOverrides](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L146>)
+## func [ApplyEnvOverrides](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L154>)
 
 ```go
 func ApplyEnvOverrides(cfg *Config)
@@ -53,7 +54,7 @@ func EnsureDefaultConfig(path string) error
 
 
 <a name="SplitCSV"></a>
-## func [SplitCSV](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L245>)
+## func [SplitCSV](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L253>)
 
 ```go
 func SplitCSV(input string) []string
@@ -62,7 +63,7 @@ func SplitCSV(input string) []string
 SplitCSV splits a CSV string into a slice of strings. It trims whitespace from each element and ignores empty elements. This function is useful for parsing comma\-separated values from configuration files.
 
 <a name="Config"></a>
-## type [Config](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L75-L117>)
+## type [Config](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L83-L125>)
 
 Config holds the configuration for the GoSight agent. It includes settings for TLS, logging, Podman and Docker integration, custom tags, and various collection intervals for metrics, logs, and processes. The configuration is loaded from a YAML file and can be overridden by environment variables. The configuration is structured to allow for easy modification and extension as needed.
 
@@ -113,7 +114,7 @@ type Config struct {
 ```
 
 <a name="LoadConfig"></a>
-### func [LoadConfig](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L125>)
+### func [LoadConfig](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L133>)
 
 ```go
 func LoadConfig(path string) (*Config, error)
@@ -121,25 +122,39 @@ func LoadConfig(path string) (*Config, error)
 
 LoadConfig loads the configuration from a YAML file. It returns a Config struct and an error if any occurred during loading. The configuration file path is passed as an argument. The function reads the file, unmarshals the YAML data into the Config struct, and returns the struct. If the file cannot be read or the data cannot be unmarshaled, an error is returned.
 
+<a name="EventViewerConfig"></a>
+## type [EventViewerConfig](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L55-L59>)
+
+EventViewerConfig defines the configuration for Windows Event Log collection
+
+```go
+type EventViewerConfig struct {
+    CollectAll      bool     `yaml:"collect_all"`      // Whether to collect from all available channels
+    Channels        []string `yaml:"channels"`         // List of channels to collect from if CollectAll is false
+    ExcludeChannels []string `yaml:"exclude_channels"` // Channels to explicitly exclude
+}
+```
+
 <a name="LogCollectionConfig"></a>
-## type [LogCollectionConfig](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L43-L51>)
+## type [LogCollectionConfig](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L43-L52>)
 
 
 
 ```go
 type LogCollectionConfig struct {
-    Interval   time.Duration `yaml:"interval"`
-    Sources    []string      `yaml:"sources"`
-    Services   []string      `yaml:"services"`
-    BatchSize  int           `yaml:"batch_size"`
-    BufferSize int           `yaml:"buffer_size"`
-    Workers    int           `yaml:"workers"`
-    MessageMax int           `yaml:"message_max"`
+    Interval    time.Duration     `yaml:"interval"`
+    Sources     []string          `yaml:"sources"`
+    Services    []string          `yaml:"services"`
+    BatchSize   int               `yaml:"batch_size"`
+    BufferSize  int               `yaml:"buffer_size"`
+    Workers     int               `yaml:"workers"`
+    MessageMax  int               `yaml:"message_max"`
+    EventViewer EventViewerConfig `yaml:"eventviewer"`
 }
 ```
 
 <a name="MetricCollectionConfig"></a>
-## type [MetricCollectionConfig](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L56-L60>)
+## type [MetricCollectionConfig](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L64-L68>)
 
 MetricCollectionConfig defines the configuration for metric collection It includes settings for the collection interval, sources, and number of workers. The sources can be a list of metrics to collect, such as CPU, memory, etc.
 
@@ -152,7 +167,7 @@ type MetricCollectionConfig struct {
 ```
 
 <a name="ProcessCollectionConfig"></a>
-## type [ProcessCollectionConfig](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L65-L68>)
+## type [ProcessCollectionConfig](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/config/config.go#L73-L76>)
 
 ProcessCollectionConfig defines the configuration for process collection It includes settings for the collection interval and number of workers. The process collection can be used to monitor running processes and their resource usage.
 

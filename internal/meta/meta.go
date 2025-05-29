@@ -74,15 +74,15 @@ func BuildMeta(cfg *config.Config, addTags map[string]string, agentID, agentVers
 		VirtualizationRole:   hostInfo.VirtualizationRole,
 		KernelVersion:        hostInfo.KernelVersion,
 		Architecture:         runtime.GOARCH,
-		Tags:                 tags,
+		Labels:               tags,
 	}
 
 	return meta
 }
 
-// CloneMetaWithTags returns a shallow copy of the base Meta
-// but optionally overrides or adds new Tags.
-func CloneMetaWithTags(base *model.Meta, extraTags map[string]string) *model.Meta {
+// CloneMetaWithLabels returns a shallow copy of the base Meta
+// but optionally overrides or adds new Labels.
+func CloneMetaWithLabels(base *model.Meta, extraTags map[string]string) *model.Meta {
 	if base == nil {
 		return nil
 	}
@@ -90,8 +90,8 @@ func CloneMetaWithTags(base *model.Meta, extraTags map[string]string) *model.Met
 	// Shallow copy the struct
 	clone := *base
 
-	// Deep copy and merge the Tags map
-	clone.Tags = utils.MergeMaps(base.Tags, extraTags)
+	// Deep copy and merge the Labels map
+	clone.Labels = utils.MergeMaps(base.Labels, extraTags)
 
 	return &clone
 }
@@ -99,7 +99,7 @@ func CloneMetaWithTags(base *model.Meta, extraTags map[string]string) *model.Met
 // BuildContainerMeta builds a container-specific meta object
 // It includes additional fields relevant to containerized environments
 // such as container ID, image name, and runtime information.
-func BuildContainerMeta(cfg *config.Config, addTags map[string]string, agentID, agentVersion string) *model.Meta {
+func BuildContainerMeta(cfg *config.Config, addLabels map[string]string, agentID, agentVersion string) *model.Meta {
 	hostname, err := os.Hostname()
 	if err != nil {
 		hostname = "unknown"
@@ -118,7 +118,7 @@ func BuildContainerMeta(cfg *config.Config, addTags map[string]string, agentID, 
 		hostInfo = &host.InfoStat{}
 	}
 
-	tags := utils.MergeMaps(cfg.CustomTags, addTags)
+	labels := utils.MergeMaps(cfg.CustomTags, addLabels)
 
 	return &model.Meta{
 		AgentID:              agentID,
@@ -136,6 +136,6 @@ func BuildContainerMeta(cfg *config.Config, addTags map[string]string, agentID, 
 		VirtualizationRole:   hostInfo.VirtualizationRole,
 		KernelVersion:        hostInfo.KernelVersion,
 		Architecture:         runtime.GOARCH,
-		Tags:                 tags,
+		Labels:               labels,
 	}
 }

@@ -30,7 +30,7 @@ func CloseGRPCConn() error
 CloseGRPCConn closes the connection \(for shutdown\)
 
 <a name="DisconnectNotify"></a>
-## func [DisconnectNotify](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/grpc/connection.go#L162>)
+## func [DisconnectNotify](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/grpc/connection.go#L163>)
 
 ```go
 func DisconnectNotify() <-chan struct{}
@@ -66,7 +66,7 @@ func PauseConnections(d time.Duration)
 PauseConnections schedules a global pause of duration d, and broadcasts one “disconnect” event on disconnectCh.
 
 <a name="WaitForResume"></a>
-## func [WaitForResume](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/grpc/connection.go#L145>)
+## func [WaitForResume](<https://github.com/aaronlmathis/gosight-agent/blob/main/internal/grpc/connection.go#L146>)
 
 ```go
 func WaitForResume()

@@ -49,7 +49,7 @@ func TestConvertToOTLPLogs(t *testing.T) {
 					"key1": "value1",
 					"key2": "value2",
 				},
-				Tags: map[string]string{
+				Labels: map[string]string{
 					"env": "test",
 					"app": "gosight",
 				},

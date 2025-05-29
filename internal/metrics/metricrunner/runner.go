@@ -125,7 +125,7 @@ func (r *MetricRunner) Run(ctx context.Context) {
 					// Initialize Meta only once per container ID
 					containerMeta, exists := containerMetas[id]
 					if !exists {
-						containerMeta = meta.CloneMetaWithTags(r.Meta, nil)
+						containerMeta = meta.CloneMetaWithLabels(r.Meta, nil)
 						containerMetas[id] = containerMeta
 					}
 
@@ -147,13 +147,13 @@ func (r *MetricRunner) Run(ctx context.Context) {
 					// Detect running status and apply tag
 					if m.Name == "running" {
 						if m.Value == 1 {
-							containerMeta.Tags["status"] = "running"
+							containerMeta.Labels["status"] = "running"
 						} else {
-							containerMeta.Tags["status"] = "stopped"
+							containerMeta.Labels["status"] = "stopped"
 						}
 					}
-					// Build tags for the container
-					meta.BuildStandardTags(containerMeta, m, true, r.StartTime)
+					// Build Labels for the container
+					meta.BuildStandardLabels(containerMeta, m, true, r.StartTime)
 
 					// Set EndpointID for meta
 					containerMeta.EndpointID = utils.GenerateEndpointID(containerMeta)
@@ -169,16 +169,15 @@ func (r *MetricRunner) Run(ctx context.Context) {
 			if len(hostMetrics) > 0 {
 
 				// Build Host Meta
-				hostMeta := meta.CloneMetaWithTags(r.Meta, nil)
+				hostMeta := meta.CloneMetaWithLabels(r.Meta, nil)
 
-				// Build tags
-				meta.BuildStandardTags(hostMeta, hostMetrics[0], false, r.StartTime)
+				// Build Labels
+				meta.BuildStandardLabels(hostMeta, hostMetrics[0], false, r.StartTime)
 
 				// Set EndpointID for meta
 				hostMeta.EndpointID = utils.GenerateEndpointID(hostMeta)
 				hostMeta.Kind = "host"
 
-				
 				payload := model.MetricPayload{
 					AgentID:    hostMeta.AgentID,
 					HostID:     hostMeta.HostID,

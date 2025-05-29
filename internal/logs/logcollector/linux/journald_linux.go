@@ -372,16 +372,16 @@ func buildLogEntry(entry *sdjournal.JournalEntry, maxSize int) model.LogEntry {
 		fields["HOSTNAME"] = v
 	}
 
-	// Simplified Tags - use Fields map for most details
-	tags := map[string]string{
-		// Add essential tags for quick filtering/grouping if needed
+	// Simplified labels - use Fields map for most details
+	labels := map[string]string{
+		// Add essential labels for quick filtering/grouping if needed
 		// "unit": category, // Maybe redundant if in Fields
 	}
 	if cid := entry.Fields["CONTAINER_ID"]; cid != "" {
-		tags["container_id"] = cid
+		labels["container_id"] = cid
 	}
 	if cname := entry.Fields["CONTAINER_NAME"]; cname != "" {
-		tags["container_name"] = cname
+		labels["container_name"] = cname
 	}
 
 	// Keep the RAW  fields - may need?
@@ -400,7 +400,7 @@ func buildLogEntry(entry *sdjournal.JournalEntry, maxSize int) model.LogEntry {
 		Category:  category,
 		PID:       parsePID(entry.Fields["_PID"]),
 		Fields:    fields, // Richer metadata goes here
-		Tags:      tags,   // Minimal, high-value tags
+		Labels:    labels, // Minimal, high-value labels
 		Meta: &model.LogMeta{ // Keep essential routing/origin info here
 			Platform:      "journald",
 			AppName:       fields["SYSLOG_IDENTIFIER"],
