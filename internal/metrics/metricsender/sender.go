@@ -217,7 +217,6 @@ func (s *MetricSender) SendMetrics(payload *model.MetricPayload) error {
 }
 
 // manageReceive handles incoming commands; on a disconnect command, broadcasts global pause.
-// (COMPLETELY PRESERVED - no changes needed for command handling)
 func (s *MetricSender) manageReceive() {
 	for {
 		resp, err := s.stream.Recv()
@@ -260,7 +259,6 @@ func (s *MetricSender) Close() error {
 }
 
 // reconnectStream re-dials and reopens the stream for sendCommandResponseWithRetry.
-// (PRESERVED - needed for command responses)
 func (s *MetricSender) reconnectStream() error {
 	if s.cc != nil {
 		_ = s.cc.Close()
@@ -285,7 +283,6 @@ func (s *MetricSender) reconnectStream() error {
 }
 
 // sendCommandResponseWithRetry retries CommandResponse up to 3 times with backoff.
-// (COMPLETELY PRESERVED - no changes needed)
 func (s *MetricSender) sendCommandResponseWithRetry(resp *proto.CommandResponse) {
 	const maxAttempts = 3
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
