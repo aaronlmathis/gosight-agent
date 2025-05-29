@@ -266,8 +266,8 @@ func convertMetaToResource(meta *model.Meta) *resourcepb.Resource {
 	add("host.mac", meta.MACAddress)
 	add("network.interface", meta.NetworkInterface)
 
-	// Tags
-	for k, v := range meta.Tags {
+	// Labels
+	for k, v := range meta.Labels {
 		add("tag."+k, v)
 	}
 
@@ -342,7 +342,7 @@ func convertLogAttributes(logEntry model.LogEntry) []*commonpb.KeyValue {
 	}
 
 	// Add tags
-	for k, v := range logEntry.Tags {
+	for k, v := range logEntry.Labels {
 		add("tag."+k, v)
 	}
 

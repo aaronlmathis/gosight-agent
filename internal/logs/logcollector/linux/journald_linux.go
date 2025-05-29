@@ -372,7 +372,7 @@ func buildLogEntry(entry *sdjournal.JournalEntry, maxSize int) model.LogEntry {
 		fields["HOSTNAME"] = v
 	}
 
-	// Simplified Tags - use Fields map for most details
+	// Simplified Labels - use Fields map for most details
 	tags := map[string]string{
 		// Add essential tags for quick filtering/grouping if needed
 		// "unit": category, // Maybe redundant if in Fields
@@ -400,7 +400,7 @@ func buildLogEntry(entry *sdjournal.JournalEntry, maxSize int) model.LogEntry {
 		Category:  category,
 		PID:       parsePID(entry.Fields["_PID"]),
 		Fields:    fields, // Richer metadata goes here
-		Tags:      tags,   // Minimal, high-value tags
+		Labels:    tags,   // Minimal, high-value tags
 		Meta: &model.LogMeta{ // Keep essential routing/origin info here
 			Platform:      "journald",
 			AppName:       fields["SYSLOG_IDENTIFIER"],
