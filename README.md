@@ -48,9 +48,6 @@ GoSight Agent is a secure, modular telemetry collector written in Go. It gathers
 
 ## GoSight Agent: Local Build & k3s Deployment
 
-This README section explains how to set up and run the GoSight agent both **locally** (for development or non‐Kubernetes use) and **in k3s** (as a DaemonSet or Deployment). All code blocks have escaped backticks (\`) so you can copy–paste directly.
-
----
 
 ### 1. Prerequisites
 
