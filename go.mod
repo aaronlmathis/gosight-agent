@@ -2,6 +2,8 @@ module github.com/aaronlmathis/gosight-agent
 
 go 1.23.7
 
+toolchain go1.24.3
+
 require (
 	github.com/aaronlmathis/gosight-shared v0.0.0-20250529171634-55ec3c7de783
 	github.com/coreos/go-systemd/v22 v22.5.0
@@ -59,5 +61,3 @@ require (
 )
 
 replace github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
-
-replace github.com/aaronlmathis/gosight-shared => ../gosight-shared

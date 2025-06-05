@@ -91,6 +91,7 @@ type Config struct {
 		ErrorLogFile  string `yaml:"error_log_file"`
 		AppLogFile    string `yaml:"app_log_file"`
 		AccessLogFile string `yaml:"access_log_file"`
+		DebugLogFile  string `yaml:"debug_log_file"`
 		LogLevel      string `yaml:"log_level"`
 	}
 
@@ -115,12 +116,7 @@ type Config struct {
 		LogCollection     LogCollectionConfig     `yaml:"log_collection"`
 		ProcessCollection ProcessCollectionConfig `yaml:"process_collection"`
 
-		Environment   string `yaml:"environment"`
-		AppLogFile    string `yaml:"app_log_file"`
-		ErrorLogFile  string `yaml:"error_log_file"`
-		AccessLogFile string `yaml:"access_log_file"`
-		DebugLogFile  string `yaml:"debug_log_file"`
-		LogLevel      string `yaml:"log_level"`
+		Environment string `yaml:"environment"`
 	}
 }
 
@@ -191,7 +187,10 @@ func ApplyEnvOverrides(cfg *Config) {
 		cfg.Logs.LogLevel = val
 		fmt.Printf("Env override: GOSIGHT_LOG_LEVEL = %s\n", val)
 	}
-
+	if val := os.Getenv("GOSIGHT_DEBUG_LOG_FILE"); val != "" {
+		cfg.Logs.DebugLogFile = val
+		fmt.Printf("Env override: GOSIGHT_DEBUG_LOG_FILE = %s\n", val)
+	}
 	// TLS certs
 	if val := os.Getenv("GOSIGHT_TLS_CERT_FILE"); val != "" {
 		cfg.TLS.CertFile = val

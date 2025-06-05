@@ -19,25 +19,35 @@ You should have received a copy of the GNU General Public License
 along with GoSight. If not, see https://www.gnu.org/licenses/.
 */
 
-// server/internal/bootstrap/logger.go
-// Initializes logger.
 package bootstrap
 
 import (
-	"fmt"
-	"os"
+	"reflect"
+	"testing"
 
 	"github.com/aaronlmathis/gosight-agent/internal/config"
 	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
-var initLogger = utils.InitLogger
-
-func SetupLogging(cfg *config.Config) {
-
-	if err := initLogger(cfg.Logs.AppLogFile, cfg.Logs.ErrorLogFile, cfg.Logs.AccessLogFile, cfg.Logs.DebugLogFile, cfg.Logs.LogLevel); err != nil {
-		fmt.Printf("Failed to initialize logger: %v\n", err)
-		os.Exit(1)
+func TestSetupLoggingUsesLogsPaths(t *testing.T) {
+	var got [5]string
+	initLogger = func(app, err, access, debug, level string) error {
+		got = [5]string{app, err, access, debug, level}
+		return nil
 	}
+	defer func() { initLogger = utils.InitLogger }()
 
+	cfg := &config.Config{}
+	cfg.Logs.AppLogFile = "app.log"
+	cfg.Logs.ErrorLogFile = "err.log"
+	cfg.Logs.AccessLogFile = "access.log"
+	cfg.Logs.DebugLogFile = "debug.log"
+	cfg.Logs.LogLevel = "info"
+
+	SetupLogging(cfg)
+
+	want := [5]string{"app.log", "err.log", "access.log", "debug.log", "info"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("initLogger called with %v, want %v", got, want)
+	}
 }

@@ -1,0 +1,24 @@
+# gosight-agent/k8s/agent-deployment-baked.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gosight-agent-dev
+  labels:
+    app: gosight-agent
+    env: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gosight-agent
+      env: dev
+  template:
+    metadata:
+      labels:
+        app: gosight-agent
+        env: dev
+    spec:
+      containers:
+        - name: gosight-agent
+          image: gosight-agent:dev
+          imagePullPolicy: IfNotPresent

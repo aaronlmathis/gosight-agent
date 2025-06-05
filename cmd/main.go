@@ -25,6 +25,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -35,13 +36,16 @@ import (
 	"github.com/aaronlmathis/gosight-shared/utils"
 )
 
-var Version = "dev" // default
-// go build -ldflags "-X main.Version=0.3.2" -o gosight-agent ./cmd/agent
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+	GitCommit = "none"
+)
 
-func main() {
+func run(configFlag *string) {
 
 	// Bootstrap config loading (flags -> env -> file)
-	cfg := bootstrap.LoadAgentConfig()
+	cfg := bootstrap.LoadAgentConfig(configFlag)
 	fmt.Printf("About to init logger with level = %s\n", cfg.Logs.LogLevel)
 
 	bootstrap.SetupLogging(cfg)
@@ -74,4 +78,19 @@ func main() {
 	utils.Info("Context canceled, beginning agent shutdown...")
 
 	agent.Close()
+}
+
+// main is the entry point for the GoSight server.
+func main() {
+	versionFlag := flag.Bool("version", false, "print version information and exit")
+	configFlag := flag.String("config", "", "Path to server config file")
+	flag.Parse()
+	if *versionFlag {
+		fmt.Printf(
+			"GoSight %s (built %s, commit %s)\n",
+			Version, BuildTime, GitCommit,
+		)
+		os.Exit(0)
+	}
+	run(configFlag)
 }

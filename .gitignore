@@ -31,7 +31,7 @@ go.work.sum
 agent/*.log
 server/*.log
 launch_containers*
-certs/
+
 */launch_containers.sh
 launch_containers.sh
 tools/
@@ -47,3 +47,10 @@ server/logstore
 generatedocs.sh
 bin/
 format.sh
+config/config.yaml
+*.crt
+*.key
+*.pem
+*.csr
+*.cnf
+*.srl

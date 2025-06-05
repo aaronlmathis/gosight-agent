@@ -1,25 +1,57 @@
-# syntax=docker/dockerfile:1.4
-FROM golang:1.23.7 AS builder
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │  gosight-agent/Dockerfile                                                  │
+# └─────────────────────────────────────────────────────────────────────────────┘
+# gosight-agent/Dockerfile
 
-WORKDIR /app
+# ---- Stage 1: Compile gosight-agent binary (Debian‐based with CGO enabled) ----
+FROM golang:1.23.7-bookworm AS builder
 
-# Copy Go workspaces
-COPY agent/ ./agent/
-COPY shared/ ./shared/
-COPY go.work.docker go.work
-COPY go.work.sum go.work.sum
+# Install pkg-config and libsystemd-dev for go-systemd
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      pkg-config \
+      libsystemd-dev && \
+    rm -rf /var/lib/apt/lists/*
 
-# Build
-WORKDIR /app/agent
+WORKDIR /src/gosight-agent
+
+# Copy only go.mod & go.sum, then strip toolchain and fix go directive
+COPY gosight-agent/go.mod gosight-agent/go.sum ./
+RUN grep -v '^toolchain ' go.mod > go.mod.fixed && mv go.mod.fixed go.mod
+RUN go mod edit -go=1.23
+
+# Download dependencies
 RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /gosight-agent ./cmd
+
+# Copy entire gosight-agent source (including certs/) 
+COPY gosight-agent/ ./
+
+# Build the agent binary with CGO (systemd bindings require it)
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
+    go build -ldflags="-w -s" -o /out/gosight-agent ./cmd
 
 
-# Runtime
-FROM gcr.io/distroless/static:nonroot
-COPY --from=builder /gosight-agent /gosight-agent
-COPY certs/ /certs/
-COPY --chown=nonroot:nonroot certs/ /certs/
-COPY --chown=nonroot:nonroot agent/config.docker.yaml /config.yaml
+# ---- Stage 2: Minimal runtime image ----
+FROM debian:bullseye-slim AS runtime
 
-ENTRYPOINT ["/gosight-agent"]
+# Install ca-certificates and libsystemd0 if binary links dynamically
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ca-certificates \
+      libsystemd0 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create directories for config and certs
+RUN mkdir -p /etc/gosight-agent /etc/certs
+
+# Copy compiled binary
+COPY --from=builder /out/gosight-agent /usr/local/bin/gosight-agent
+
+# Copy certs from builder (/src/gosight-agent/certs) into /etc/certs
+COPY --from=builder /src/gosight-agent/certs/ /etc/certs/
+
+# (Optional) To bake in config.yaml at build time, uncomment:
+COPY --from=builder /src/gosight-agent/config/config.yaml /etc/gosight-agent/config.yaml
+
+ENTRYPOINT ["/usr/local/bin/gosight-agent"]
+CMD ["--config", "/etc/gosight-agent/config.yaml"]

@@ -1,0 +1,38 @@
+# gosight-agent/k8s/agent-daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: gosight-agent
+  labels:
+    app: gosight-agent
+    role: agent
+spec:
+  selector:
+    matchLabels:
+      app: gosight-agent
+      role: agent
+  template:
+    metadata:
+      labels:
+        app: gosight-agent
+        role: agent
+    spec:
+      containers:
+        - name: gosight-agent
+          image: gosight-agent:dev
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--config"
+            - "/etc/gosight-agent/config.yaml"
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/gosight-agent
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: gosight-agent-config
+            # If your ConfigMap key is not "config.yaml", you can specify items:
+            # items:
+            #   - key: custom-key-name
+            #     path: config.yaml

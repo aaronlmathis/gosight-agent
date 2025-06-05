@@ -135,7 +135,7 @@ func (r *LogRunner) Run(ctx context.Context) {
 			if len(logBatches) == 0 {
 				continue
 			}
- 
+
 			// set job tag for victoriametrics.
 			r.Meta.Tags["job"] = "gosight-logs"
 
