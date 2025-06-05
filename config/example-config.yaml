@@ -1,3 +1,50 @@
+# Example Configuration File for GoSight Agent
+#
+# This file provides an example configuration for the GoSight Agent. Below is a detailed explanation of each field:
+#
+# agent:
+#   - server_url: The URL of the GoSight server to which the agent sends data. Format: domain/ip:port.
+#   - host: The hostname of the machine where the agent is running. This is used for identification.
+#   - log_collection: Configuration for log collection.
+#       - sources: List of log sources to collect from (e.g., journald, eventviewer).
+#       - batch_size: Number of log entries to send in a single payload.
+#       - message_max: Maximum size of log messages before truncation.
+#       - buffer_size: Maximum size of the buffer before sending logs.
+#       - workers: Number of worker threads for log collection.
+#       - interval: Time interval for log collection.
+#       - eventviewer: Configuration specific to Windows Event Viewer.
+#           - collect_all: Whether to collect logs from all available channels.
+#           - channels: List of specific channels to collect logs from (if collect_all is false).
+#           - exclude_channels: List of channels to exclude from log collection.
+#   - metric_collection: Configuration for metric collection.
+#       - workers: Number of worker threads for metric collection.
+#       - interval: Time interval for metric collection.
+#       - sources: List of metrics to collect (e.g., cpu, mem, disk, net).
+#   - process_collection: Configuration for process information collection.
+#       - workers: Number of worker threads for process collection.
+#       - interval: Time interval for process collection.
+#   - environment: The environment in which the agent is running (e.g., dev, prod).
+#
+# logs:
+#   - error_log_file: Path to the error log file.
+#   - app_log_file: Path to the application log file.
+#   - access_log_file: Path to the access log file.
+#   - debug_log_file: Path to the debug log file.
+#   - log_level: Logging level (e.g., debug, info).
+#
+# tls:
+#   - ca_file: Path to the Certificate Authority (CA) file.
+#   - cert_file: Path to the client certificate file (required for mutual TLS).
+#   - key_file: Path to the client key file (required for mutual TLS).
+#
+# podman:
+#   - enabled: Whether the Podman collector is enabled.
+#   - socket: Path to the Podman socket file.
+#
+# docker:
+#   - enabled: Whether the Docker collector is enabled.
+#   - socket: Path to the Docker socket file.
+
 agent:
   server_url: "localhost:4317"    # domain/ip:port
   host: "dev-machine-01"    # Hostname of agent machine
