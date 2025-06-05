@@ -199,17 +199,17 @@ make load     # loads the image into k3s containerd namespace (k8s.io)
 ```
 
 - **`make image`**:  
-  \> Runs:
-  \```
+  > Runs:
+  ```
   docker build -f Dockerfile -t gosight-agent:$(VERSION) ..
-  \```  
+  ```  
   where `..` is the parent folder containing both `gosight-agent/` and `certs/`.
 
 - **`make load`**:  
-  \> Runs:
+  > Runs:
   \```
   docker save gosight-agent:$(VERSION) | k3s ctr -n k8s.io images import -
-  \```
+  ```
 
   Make sure you have permission to write to `/run/k3s/containerd/containerd.sock`. If you get "permission denied," either run as `sudo make load` or adjust your user’s group.
 
@@ -224,12 +224,12 @@ make configmap
 
 This runs:
 
-\```
+```
 kubectl create configmap gosight-agent-config \
   --from-file=config.yaml=config/config.yaml \
   --namespace=default \
   --dry-run=client -o yaml | kubectl apply -f -
-\```
+```
 
 Now Kubernetes has a ConfigMap key `config.yaml` containing your configuration.
 
