@@ -44,6 +44,12 @@
 # docker:
 #   - enabled: Whether the Docker collector is enabled.
 #   - socket: Path to the Docker socket file.
+#
+# OTLP Receiver Configuration
+# This section configures the OTLP receiver for the agent.
+# - enabled: Whether the OTLP receiver is enabled.
+# - grpc_port: The port for the gRPC OTLP endpoint (default: 4317).
+# - http_port: The port for the HTTP OTLP endpoint (default: 4318).
 
 agent:
   server_url: "localhost:4317"    # domain/ip:port
@@ -147,3 +153,8 @@ podman:
 docker:
   enabled: true
   socket: "/var/run/docker.sock"
+
+otlp_receiver:
+  enabled: true
+  grpc_port: 4317
+  http_port: 4318

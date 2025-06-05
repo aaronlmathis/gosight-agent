@@ -40,6 +40,7 @@ import (
 	"github.com/aaronlmathis/gosight-agent/internal/meta"
 	metricrunner "github.com/aaronlmathis/gosight-agent/internal/metrics/metricrunner"
 	"github.com/aaronlmathis/gosight-agent/internal/processes/processrunner"
+	"github.com/aaronlmathis/gosight-agent/internal/otelreceiver"
 	"github.com/aaronlmathis/gosight-shared/model"
 	"github.com/aaronlmathis/gosight-shared/utils"
 )
@@ -116,6 +117,30 @@ func (a *Agent) Start(ctx context.Context) {
 	utils.Debug("Agent attempting to start processrunner.")
 	go a.ProcessRunner.Run(ctx)
 
+}
+
+// StartOTLPReceiver starts the OTLP receiver if it is enabled in the configuration.
+func (a *Agent) StartOTLPReceiver(ctx context.Context) error {
+	if !a.Config.OTLPReceiver.Enabled {
+		utils.Info("OTLP Receiver is disabled in the configuration.")
+		return nil
+	}
+
+	// Start gRPC server
+	go func() {
+		if err := otelreceiver.StartGRPCServer(ctx, a.Config.OTLPReceiver.GRPCPort); err != nil {
+			utils.Error("Failed to start OTLP gRPC server: %v", err)
+		}
+	}()
+
+	// Start HTTP server
+	go func() {
+		if err := otelreceiver.StartHTTPServer(ctx, a.Config.OTLPReceiver.HTTPPort); err != nil {
+			utils.Error("Failed to start OTLP HTTP server: %v", err)
+		}
+	}()
+
+	return nil
 }
 
 // Close stops all runners and closes the gRPC connection.
