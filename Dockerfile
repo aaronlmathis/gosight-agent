@@ -32,7 +32,7 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
 
 
 # ---- Stage 2: Minimal runtime image ----
-FROM debian:bullseye-slim AS runtime
+FROM ubuntu:24.04 AS runtime
 
 # Install ca-certificates and libsystemd0 if binary links dynamically
 RUN apt-get update && \
