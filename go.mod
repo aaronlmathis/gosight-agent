@@ -11,6 +11,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/nxadm/tail v1.4.11
 	github.com/shirou/gopsutil/v4 v4.25.3
+	go.opentelemetry.io/collector/pdata v1.33.0
+	go.opentelemetry.io/collector/receiver/otlpreceiver v0.127.0
 	go.opentelemetry.io/proto/otlp v1.7.0
 	golang.org/x/sys v0.33.0
 	google.golang.org/grpc v1.72.2
@@ -85,11 +87,9 @@ require (
 	go.opentelemetry.io/collector/featuregate v1.33.0 // indirect
 	go.opentelemetry.io/collector/internal/sharedcomponent v0.127.0 // indirect
 	go.opentelemetry.io/collector/internal/telemetry v0.127.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.33.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.127.0 // indirect
 	go.opentelemetry.io/collector/pipeline v0.127.0 // indirect
 	go.opentelemetry.io/collector/receiver v1.33.0 // indirect
-	go.opentelemetry.io/collector/receiver/otlpreceiver v0.127.0 // indirect
 	go.opentelemetry.io/collector/receiver/receiverhelper v0.127.0 // indirect
 	go.opentelemetry.io/collector/receiver/xreceiver v0.127.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.10.0 // indirect
