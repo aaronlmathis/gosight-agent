@@ -6,9 +6,9 @@ import (
 
 	grpcconn "github.com/aaronlmathis/gosight-agent/internal/grpc"
 	"github.com/aaronlmathis/gosight-agent/internal/otelconvert"
-	colmetricpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
-	"go.opentelemetry.io/collector/pdata/pmetric"
 	"github.com/aaronlmathis/gosight-shared/model"
+	"go.opentelemetry.io/collector/pdata/pmetric"
+	colmetricpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 )
 
 // HandleMetrics processes incoming OTLP metrics payloads.

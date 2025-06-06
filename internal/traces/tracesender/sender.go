@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
-	grpcconn "github.com/aaronlmathis/gosight-agent/internal/grpc"
 	"github.com/aaronlmathis/gosight-agent/internal/config"
+	grpcconn "github.com/aaronlmathis/gosight-agent/internal/grpc"
 	"github.com/aaronlmathis/gosight-shared/model"
 	"github.com/aaronlmathis/gosight-shared/utils"
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"

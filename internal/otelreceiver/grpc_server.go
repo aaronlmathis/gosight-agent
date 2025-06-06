@@ -3,7 +3,6 @@ package otelreceiver
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 
 	"github.com/aaronlmathis/gosight-agent/internal/config"
@@ -61,22 +60,6 @@ func StartGRPCServer(ctx context.Context, port int, cfg *config.Config) error {
 	return server.Serve(listener)
 }
 
-// Update handleTraceExport to remove response handling
-func handleTraceExport(srv interface{}, stream grpc.ServerStream) error {
-	for {
-		tracePayload := &model.TracePayload{}
-		if err := stream.RecvMsg(tracePayload); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-
-		// Enqueue the trace payload into the Tracerunner's task queue
-		traceRunner.Enqueue(tracePayload)
-	}
-	return nil
-}
 
 // Implement a function matching grpc.MethodHandler type
 func traceExportHandler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {

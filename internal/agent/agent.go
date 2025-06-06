@@ -39,8 +39,8 @@ import (
 	"github.com/aaronlmathis/gosight-agent/internal/logs/logrunner"
 	"github.com/aaronlmathis/gosight-agent/internal/meta"
 	metricrunner "github.com/aaronlmathis/gosight-agent/internal/metrics/metricrunner"
-	"github.com/aaronlmathis/gosight-agent/internal/processes/processrunner"
 	"github.com/aaronlmathis/gosight-agent/internal/otelreceiver"
+	"github.com/aaronlmathis/gosight-agent/internal/processes/processrunner"
 	"github.com/aaronlmathis/gosight-shared/model"
 	"github.com/aaronlmathis/gosight-shared/utils"
 )
@@ -128,7 +128,7 @@ func (a *Agent) StartOTLPReceiver(ctx context.Context) error {
 
 	// Start gRPC server
 	go func() {
-		if err := otelreceiver.StartGRPCServer(ctx, a.Config.OTLPReceiver.GRPCPort); err != nil {
+		if err := otelreceiver.StartGRPCServer(ctx, a.Config.OTLPReceiver.GRPCPort, a.Config); err != nil {
 			utils.Error("Failed to start OTLP gRPC server: %v", err)
 		}
 	}()
