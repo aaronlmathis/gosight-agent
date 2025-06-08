@@ -19,19 +19,6 @@ You should have received a copy of the GNU General Public License
 along with GoSight. If not, see https://www.gnu.org/licenses/.
 */
 
-// gosight/agent/internal/logs/logcollector/collector.go
-// Package logcollector provides the Collector interface for all metric collectors.
-
-package logcollector
-
-import (
-	"context"
-
-	"github.com/aaronlmathis/gosight-shared/model"
-)
-
-// Collector is an interface that defines the methods for a log collector.
-type Collector interface {
-	Name() string
-	Collect(ctx context.Context) ([][]model.LogEntry, error)
-}
+// Package otel provides the OpenTelemetry Protocol (OTLP) support for GoSight.
+// It includes functionality for receiving, processing, and exporting OTLP data,
+package otelreceiver

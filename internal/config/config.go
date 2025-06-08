@@ -78,9 +78,9 @@ type ProcessCollectionConfig struct {
 // OTLPReceiverConfig defines the configuration for the OTLP receiver.
 // It includes settings for enabling the receiver and specifying the gRPC and HTTP ports.
 type OTLPReceiverConfig struct {
-	Enabled  bool `yaml:"enabled"`
-	GRPCPort int  `yaml:"grpc_port"`
-	HTTPPort int  `yaml:"http_port"`
+	Enabled  bool   `yaml:"enabled"`
+	GRPCPort int    `yaml:"grpc_port"`
+	HTTPAddr string `yaml:"http_addr"`
 }
 
 // TraceCollectionConfig defines the configuration for trace collection

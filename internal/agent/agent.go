@@ -127,15 +127,16 @@ func (a *Agent) StartOTLPReceiver(ctx context.Context) error {
 	}
 
 	// Start gRPC server
-	go func() {
-		if err := otelreceiver.StartGRPCServer(ctx, a.Config.OTLPReceiver.GRPCPort, a.Config); err != nil {
-			utils.Error("Failed to start OTLP gRPC server: %v", err)
-		}
-	}()
+	// go func() {
+	// 	if err := otelreceiver.StartGRPCServer(ctx, a.Config.OTLPReceiver.GRPCPort, a.Config); err != nil {
+	// 		utils.Error("Failed to start OTLP gRPC server: %v", err)
+	// 	}
+	// }()
 
 	// Start HTTP server
 	go func() {
-		if err := otelreceiver.StartHTTPServer(ctx, a.Config.OTLPReceiver.HTTPPort); err != nil {
+		_, err := otelreceiver.NewOTelHTTPReceiver(ctx, a.Config)
+		if err != nil {
 			utils.Error("Failed to start OTLP HTTP server: %v", err)
 		}
 	}()

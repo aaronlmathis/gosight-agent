@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/aaronlmathis/gosight-agent/internal/config"
-	"github.com/aaronlmathis/gosight-agent/internal/meta"
 	"github.com/aaronlmathis/gosight-agent/internal/metrics/metriccollector"
 	"github.com/aaronlmathis/gosight-agent/internal/metrics/metricsender"
 	"github.com/aaronlmathis/gosight-shared/model"
@@ -85,10 +84,10 @@ func (r *MetricRunner) Close() {
 // It handles the collection of both host and container metrics.
 // The host metrics are sent as a single payload, while container metrics are sent as separate payloads.
 func (r *MetricRunner) Run(ctx context.Context) {
-
 	defer r.MetricSender.Close()
 
-	taskQueue := make(chan *model.MetricPayload, 500)
+	// Change queue to handle metric batches instead of payloads
+	taskQueue := make(chan []*model.Metric, 500)
 	go r.MetricSender.StartWorkerPool(ctx, taskQueue, r.Config.Agent.MetricCollection.Workers)
 
 	ticker := time.NewTicker(r.Config.Agent.MetricCollection.Interval)
@@ -108,110 +107,52 @@ func (r *MetricRunner) Run(ctx context.Context) {
 				continue
 			}
 
-			var hostMetrics []model.Metric
-			containerBatches := make(map[string][]model.Metric)
-			containerMetas := make(map[string]*model.Meta)
+			var hostMetrics []*model.Metric
+			containerBatches := make(map[string][]*model.Metric)
 
 			for _, m := range metrics {
+				// Make a copy of the metric to avoid pointer issues
+				metricCopy := m
 
-				if len(m.Dimensions) > 0 && m.Dimensions["container_id"] != "" {
-					id := m.Dimensions["container_id"]
-					if id == "" {
-						continue
+				// Check if this metric has container_id in any of its data points
+				var containerID string
+				var isContainerMetric bool
+
+				// Look through all data points for container_id
+				for _, dp := range metricCopy.DataPoints {
+					if dp.Attributes != nil {
+						if id, exists := dp.Attributes["container_id"]; exists && id != "" {
+							containerID = id
+							isContainerMetric = true
+							break
+						}
 					}
+				}
+
+				if isContainerMetric {
 					// Add container metrics to containerBatches
-					containerBatches[id] = append(containerBatches[id], m)
-
-					// Initialize Meta only once per container ID
-					containerMeta, exists := containerMetas[id]
-					if !exists {
-						containerMeta = meta.CloneMetaWithTags(r.Meta, nil)
-						containerMetas[id] = containerMeta
-					}
-
-					// TODO metric runner add k8 namespace / cluster support
-					// Populate meta with container-specific information
-					for k, v := range m.Dimensions {
-						switch k {
-						case "container_id":
-							containerMeta.ContainerID = v
-						case "name", "container_name":
-							containerMeta.ContainerName = v
-						case "image_id":
-							containerMeta.ContainerImageID = v
-						case "image":
-							containerMeta.ContainerImageName = v
-						}
-					}
-
-					// Detect running status and apply tag
-					if m.Name == "running" {
-						if m.Value == 1 {
-							containerMeta.Tags["status"] = "running"
-						} else {
-							containerMeta.Tags["status"] = "stopped"
-						}
-					}
-					// Build tags for the container
-					meta.BuildStandardTags(containerMeta, m, true, r.StartTime)
-
-					// Set EndpointID for meta
-					containerMeta.EndpointID = utils.GenerateEndpointID(containerMeta)
-					containerMeta.Kind = "container"
-
+					containerBatches[containerID] = append(containerBatches[containerID], &metricCopy)
 				} else {
-					// Host metrics, collect them separately
-					hostMetrics = append(hostMetrics, m)
+					// Host metrics
+					hostMetrics = append(hostMetrics, &metricCopy)
 				}
 			}
 
-			// Send host metrics as a single payload
+			// Send host metrics as a single batch
 			if len(hostMetrics) > 0 {
-
-				// Build Host Meta
-				hostMeta := meta.CloneMetaWithTags(r.Meta, nil)
-
-				// Build tags
-				meta.BuildStandardTags(hostMeta, hostMetrics[0], false, r.StartTime)
-
-				// Set EndpointID for meta
-				hostMeta.EndpointID = utils.GenerateEndpointID(hostMeta)
-				hostMeta.Kind = "host"
-
-				payload := model.MetricPayload{
-					AgentID:    hostMeta.AgentID,
-					HostID:     hostMeta.HostID,
-					Hostname:   hostMeta.Hostname,
-					EndpointID: hostMeta.EndpointID,
-					Timestamp:  time.Now(),
-					Metrics:    hostMetrics,
-					Meta:       hostMeta,
-				}
-				//utils.Info("META Payload for: %s - %v", payload.Host, payload.Meta)
 				select {
-				case taskQueue <- &payload:
+				case taskQueue <- hostMetrics:
 				default:
 					utils.Warn("Host task queue full! Dropping host metrics")
 				}
 			}
 
-			// Send each container as a separate payload
-			for id, metrics := range containerBatches {
-				payload := model.MetricPayload{
-					AgentID:    containerMetas[id].AgentID,
-					HostID:     containerMetas[id].HostID,
-					Hostname:   containerMetas[id].Hostname,
-					EndpointID: containerMetas[id].EndpointID,
-					Timestamp:  time.Now(),
-					Metrics:    metrics,
-					Meta:       containerMetas[id],
-				}
-				//utils.Info("META Payload for: %s - %s - %s - %v", payload.HostID, payload.AgentID, payload.Hostname, payload.Meta)
-
+			// Send each container as a separate batch
+			for containerID, metrics := range containerBatches {
 				select {
-				case taskQueue <- &payload:
+				case taskQueue <- metrics:
 				default:
-					utils.Warn("Task queue full! Dropping container metrics for %s", id)
+					utils.Warn("Task queue full! Dropping container metrics for %s", containerID)
 				}
 			}
 		}

@@ -94,95 +94,55 @@ func (r *LogRunner) Close() {
 }
 
 func (r *LogRunner) Run(ctx context.Context) {
+	defer r.LogSender.Close()
 
-	defer r.Close() // Ensure cleanup on exit
-
-	utils.Debug("Initializing LogRunner...")
-	taskQueue := make(chan *model.LogPayload, r.Config.Agent.LogCollection.BufferSize)
-
-	// Start sender worker pool
-	// Make sure StartWorkerPool handles context cancellation gracefully
-	r.runWg.Add(1)
-	go func() {
-		defer r.runWg.Done()
-		r.LogSender.StartWorkerPool(ctx, taskQueue, r.Config.Agent.LogCollection.Workers)
-		utils.Debug("Log sender worker pool stopped.")
-	}()
+	// Change queue to handle log batches instead of payloads
+	taskQueue := make(chan []model.LogEntry, 500)
+	go r.LogSender.StartWorkerPool(ctx, taskQueue, r.Config.Agent.LogCollection.Workers)
 
 	ticker := time.NewTicker(r.Config.Agent.LogCollection.Interval)
 	defer ticker.Stop()
 
-	utils.Info("Log Runner started. Collecting logs every %v", r.Config.Agent.LogCollection.Interval)
-
-	// No need for the startTime throttling anymore unless specifically desired
-	// startTime := time.Now()
+	utils.Info("LogRunner started. Collecting logs every %v", r.Config.Agent.LogCollection.Interval)
 
 	for {
 		select {
 		case <-ctx.Done():
-			utils.Warn("Log runner context cancelled, shutting down...")
-			return // Exit Run, defer Close() will be called
+			utils.Warn("log runner shutting down...")
+			return
 		case <-ticker.C:
-			// Collect logs from *all* registered collectors via the registry
-			logBatches, err := r.LogRegistry.Collect(ctx) // Assuming Collect iterates through collectors
+			// Collect logs from all collectors
+			logBatches, err := r.LogRegistry.Collect(ctx)
 			if err != nil {
-				// Log collection errors, but continue running
-				utils.Error("Log collection failed: %v", err)
+				utils.Error("log collection failed: %v", err)
 				continue
 			}
 
-			// If no logs collected, continue to next tick
-			if len(logBatches) == 0 {
-				continue
-			}
-
-			// set job tag for victoriametrics.
-			r.Meta.Tags["job"] = "gosight-logs"
-
-			// clone base meta before modifying it
-			meta := meta.CloneMetaWithTags(r.Meta, nil)
-
-			// Generate Endpoint ID
-			endpointID := utils.GenerateEndpointID(meta)
-			meta.EndpointID = endpointID
-			meta.Kind = "host"
-			meta.Tags["instance"] = meta.Hostname
-
-			//utils.Debug("Processing %d log batches for sending.", len(logBatches))
-
-			// Loop through batches collected (potentially from multiple sources)
+			// Process each batch and add Meta information
 			for _, batch := range logBatches {
 				if len(batch) == 0 {
-					continue // Skip empty batches
+					continue
 				}
 
-				// Attach metadata (LogRunner is responsible for the payload structure)
-				payload := &model.LogPayload{
-					AgentID:    meta.AgentID,
-					HostID:     meta.HostID,
-					Hostname:   meta.Hostname,
-					EndpointID: meta.EndpointID,
-					Timestamp:  time.Now(), // Payload timestamp is collection time
-					Logs:       batch,      // The batch collected from a specific source
-					Meta:       meta,       // Agent/Host metadata
+				// Enrich each log entry with Meta information
+				enrichedBatch := make([]model.LogEntry, len(batch))
+				for i, logEntry := range batch {
+					enrichedBatch[i] = logEntry
+
+					// Set Meta if not already present
+					if enrichedBatch[i].Meta == nil {
+						enrichedBatch[i].Meta = r.Meta
+					} else {
+						// Merge with base Meta, preserving log-specific metadata
+						enrichedBatch[i].Meta = meta.MergeMetaWithBase(r.Meta, enrichedBatch[i].Meta)
+					}
 				}
 
-				// No need for the artificial sleep throttling unless rate limiting is required
-				// if time.Since(startTime) < 30*time.Second {
-				//     time.Sleep(100 * time.Millisecond)
-				// }
-				//utils.Debug("Queuing log payload with %d entries from host %s", len(batch), meta.Hostname)
-
-				// Send payload to the worker pool queue
+				// Send the batch
 				select {
-				case taskQueue <- payload:
-					// Successfully queued
-				case <-ctx.Done():
-					utils.Warn("Context cancelled while trying to queue log payload. Shutting down.")
-					return // Exit if context cancelled during queuing attempt
+				case taskQueue <- enrichedBatch:
 				default:
-					// Queue is full, drop the batch
-					utils.Warn("Log task queue full! Dropping log batch (%d entries) from host %s", len(batch), meta.Hostname)
+					utils.Warn("Log task queue full! Dropping log batch with %d entries", len(enrichedBatch))
 				}
 			}
 		}

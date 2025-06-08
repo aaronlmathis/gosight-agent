@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"time"
 
+	agentutils "github.com/aaronlmathis/gosight-agent/internal/utils"
 	"github.com/aaronlmathis/gosight-shared/model"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/load"
@@ -74,36 +75,28 @@ func (c *CPUCollector) Collect(ctx context.Context) ([]model.Metric, error) {
 	// Per-core usage
 	if percentPerCore, err := cpu.PercentWithContext(ctx, c.interval, true); err == nil {
 		for i, val := range percentPerCore {
-			metrics = append(metrics, model.Metric{
-				Namespace:    "System",
-				SubNamespace: "CPU",
-				Name:         "usage_percent",
-				Timestamp:    now,
-				Value:        val,
-				Type:         "gauge",
-				Unit:         "percent",
-				Dimensions: map[string]string{
+			metrics = append(metrics, agentutils.Metric(
+				"System", "CPU", "usage_percent",
+				val, "gauge", "percent",
+				map[string]string{
 					"core":  formatCore(i),
 					"scope": "per_core",
 				},
-			})
+				now,
+			))
 		}
 	}
 
 	// Total CPU usage
 	if percentTotal, err := cpu.PercentWithContext(ctx, c.interval, false); err == nil && len(percentTotal) > 0 {
-		metrics = append(metrics, model.Metric{
-			Namespace:    "System",
-			SubNamespace: "CPU",
-			Name:         "usage_percent",
-			Timestamp:    now,
-			Value:        percentTotal[0],
-			Type:         "gauge",
-			Unit:         "percent",
-			Dimensions: map[string]string{
+		metrics = append(metrics, agentutils.Metric(
+			"System", "CPU", "usage_percent",
+			percentTotal[0], "gauge", "percent",
+			map[string]string{
 				"scope": "total",
 			},
-		})
+			now,
+		))
 	}
 
 	// CPU times (cumulative)
@@ -121,33 +114,24 @@ func (c *CPUCollector) Collect(ctx context.Context) ([]model.Metric, error) {
 			"guest":      t.Guest,
 			"guest_nice": t.GuestNice,
 		} {
-			metrics = append(metrics, model.Metric{
-				Namespace:    "System",
-				SubNamespace: "CPU",
-				Name:         "time_" + k,
-				Timestamp:    now,
-				Value:        v,
-				Type:         "counter",
-				Unit:         "seconds",
-				Dimensions: map[string]string{
+			metrics = append(metrics, agentutils.Metric(
+				"System", "CPU", "time_"+k,
+				v, "counter", "seconds",
+				map[string]string{
 					"scope": "total",
 				},
-			})
+				now,
+			))
 		}
 	}
 
 	// CPU Info: Clock speed per core
 	if info, err := cpu.InfoWithContext(ctx); err == nil && len(info) > 0 {
 		for i, cpu := range info {
-			metrics = append(metrics, model.Metric{
-				Namespace:    "System",
-				SubNamespace: "CPU",
-				Name:         "clock_mhz",
-				Timestamp:    now,
-				Value:        cpu.Mhz,
-				Type:         "gauge",
-				Unit:         "MHz",
-				Dimensions: map[string]string{
+			metrics = append(metrics, agentutils.Metric(
+				"System", "CPU", "clock_mhz",
+				cpu.Mhz, "gauge", "MHz",
+				map[string]string{
 					"core":     formatCore(i),
 					"vendor":   cpu.VendorID,
 					"model":    cpu.ModelName,
@@ -156,64 +140,50 @@ func (c *CPUCollector) Collect(ctx context.Context) ([]model.Metric, error) {
 					"family":   cpu.Family,
 					"physical": formatBool(cpu.PhysicalID != ""),
 				},
-			})
+				now,
+			))
 		}
 	}
 
 	// Logical and physical core counts
 	if count, err := cpu.CountsWithContext(ctx, true); err == nil {
-		metrics = append(metrics, model.Metric{
-			Namespace:    "System",
-			SubNamespace: "CPU",
-			Name:         "count_logical",
-			Timestamp:    now,
-			Value:        float64(count),
-			Type:         "gauge",
-			Unit:         "count",
-		})
+		metrics = append(metrics, agentutils.Metric(
+			"System", "CPU", "count_logical",
+			float64(count), "gauge", "count",
+			nil,
+			now,
+		))
 	}
 	if count, err := cpu.CountsWithContext(ctx, false); err == nil {
-		metrics = append(metrics, model.Metric{
-			Namespace:    "System",
-			SubNamespace: "CPU",
-			Name:         "count_physical",
-			Timestamp:    now,
-			Value:        float64(count),
-			Type:         "gauge",
-			Unit:         "count",
-		})
+		metrics = append(metrics, agentutils.Metric(
+			"System", "CPU", "count_physical",
+			float64(count), "gauge", "count",
+			nil,
+			now,
+		))
 	}
 
 	// Load averages (1, 5, 15 min)
 	if avg, err := load.AvgWithContext(ctx); err == nil {
 		metrics = append(metrics,
-			model.Metric{
-				Namespace:    "System",
-				SubNamespace: "CPU",
-				Name:         "load_avg_1",
-				Timestamp:    now,
-				Value:        avg.Load1,
-				Type:         "gauge",
-				Unit:         "load",
-			},
-			model.Metric{
-				Namespace:    "System",
-				SubNamespace: "CPU",
-				Name:         "load_avg_5",
-				Timestamp:    now,
-				Value:        avg.Load5,
-				Type:         "gauge",
-				Unit:         "load",
-			},
-			model.Metric{
-				Namespace:    "System",
-				SubNamespace: "CPU",
-				Name:         "load_avg_15",
-				Timestamp:    now,
-				Value:        avg.Load15,
-				Type:         "gauge",
-				Unit:         "load",
-			},
+			agentutils.Metric(
+				"System", "CPU", "load_avg_1",
+				avg.Load1, "gauge", "load",
+				nil,
+				now,
+			),
+			agentutils.Metric(
+				"System", "CPU", "load_avg_5",
+				avg.Load5, "gauge", "load",
+				nil,
+				now,
+			),
+			agentutils.Metric(
+				"System", "CPU", "load_avg_15",
+				avg.Load15, "gauge", "load",
+				nil,
+				now,
+			),
 		)
 	}
 

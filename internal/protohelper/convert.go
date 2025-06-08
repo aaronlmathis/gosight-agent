@@ -27,52 +27,7 @@ package protohelper
 import (
 	"github.com/aaronlmathis/gosight-shared/model"
 	"github.com/aaronlmathis/gosight-shared/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
-
-// ConvertToProtoPayload converts a MetricPayload from internal model format
-// to the protobuf format used by the gRPC service.
-
-func ConvertToProtoPayload(payload model.MetricPayload) *proto.MetricPayload {
-	metrics := make([]*proto.Metric, 0, len(payload.Metrics))
-	for _, m := range payload.Metrics {
-		pm := &proto.Metric{
-			Namespace:         m.Namespace,
-			Name:              m.Name,
-			Subnamespace:      m.SubNamespace,
-			Timestamp:         timestamppb.New(m.Timestamp),
-			Value:             m.Value,
-			Unit:              m.Unit,
-			Dimensions:        m.Dimensions,
-			StorageResolution: int32(m.StorageResolution),
-			Type:              m.Type,
-		}
-		if m.StatisticValues != nil {
-			pm.StatisticValues = &proto.StatisticValues{
-				Minimum:     m.StatisticValues.Minimum,
-				Maximum:     m.StatisticValues.Maximum,
-				SampleCount: int32(m.StatisticValues.SampleCount),
-				Sum:         m.StatisticValues.Sum,
-			}
-		}
-		metrics = append(metrics, pm)
-	}
-
-	pbMeta := ConvertMetaToProtoMeta(payload.Meta)
-	if pbMeta == nil {
-		pbMeta = &proto.Meta{}
-	}
-
-	return &proto.MetricPayload{
-		AgentId:    payload.AgentID,
-		HostId:     payload.HostID,
-		Hostname:   payload.Hostname,
-		EndpointId: payload.EndpointID,
-		Timestamp:  timestamppb.New(payload.Timestamp),
-		Metrics:    metrics,
-		Meta:       pbMeta,
-	}
-}
 
 // ConvertLogMetaToProtoMeta translates the internal LogMeta struct into the proto.LogMeta type.
 // It preserves all model.LogEntry environment fields needed for traceability.

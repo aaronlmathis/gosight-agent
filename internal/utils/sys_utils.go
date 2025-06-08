@@ -35,19 +35,25 @@ import (
 
 // Metric creates a new model.Metric instance with the provided parameters.
 // It sets the namespace, sub-namespace, name, value, type, unit, dimensions,
-// and timestamp for the metric.
+// and timestamp for the metric. This creates an OTLP-compliant metric with
+// a single data point.
 // The value is converted to a float64 using the ToFloat64 function.
 // The function returns the created model.Metric instance.
 func Metric(ns, sub, name string, value interface{}, typ, unit string, dims map[string]string, ts time.Time) model.Metric {
+	dataPoint := model.DataPoint{
+		Attributes: dims,
+		Timestamp:  ts,
+		Value:      ToFloat64(value),
+	}
+
 	return model.Metric{
 		Namespace:    ns,
 		SubNamespace: sub,
 		Name:         name,
-		Timestamp:    ts,
-		Value:        ToFloat64(value),
-		Type:         typ,
 		Unit:         unit,
-		Dimensions:   dims,
+		DataType:     typ,
+		Source:       "gopsutils", // Set default source for system collectors
+		DataPoints:   []model.DataPoint{dataPoint},
 	}
 }
 

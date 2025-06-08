@@ -30,7 +30,7 @@ import (
 	"github.com/aaronlmathis/gosight-agent/internal/command"
 	"github.com/aaronlmathis/gosight-agent/internal/config"
 	grpcconn "github.com/aaronlmathis/gosight-agent/internal/grpc"
-	"github.com/aaronlmathis/gosight-agent/internal/otelconvert"
+	"github.com/aaronlmathis/gosight-agent/internal/otelreceiver"
 	"github.com/aaronlmathis/gosight-shared/model"
 	"github.com/aaronlmathis/gosight-shared/proto"
 	"github.com/aaronlmathis/gosight-shared/utils"
@@ -188,20 +188,20 @@ func (s *MetricSender) manageConnection() {
 }
 
 // SendMetrics converts to OTLP and sends via unary call.
-func (s *MetricSender) SendMetrics(payload *model.MetricPayload) error {
+func (s *MetricSender) SendMetrics(metrics []*model.Metric) error {
 	if s.metricsClient == nil {
 		return status.Error(codes.Unavailable, "no active OTLP metrics client")
 	}
 
 	// Convert to OTLP format using our conversion function
-	otlpReq := otelconvert.ConvertToOTLPMetrics(payload)
+	otlpReq := otelreceiver.ConvertToOTLPMetrics(metrics)
 	if otlpReq == nil {
 		utils.Warn("Failed to convert metrics to OTLP format")
 		return status.Error(codes.InvalidArgument, "failed to convert metrics to OTLP")
 	}
 
 	// Send via unary call (OTLP standard)
-	utils.Info("Sending %d metrics to server via OTLP", len(payload.Metrics))
+	utils.Info("Sending %d metrics to server via OTLP", len(metrics))
 
 	sendCtx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
 	defer cancel()
@@ -212,7 +212,7 @@ func (s *MetricSender) SendMetrics(payload *model.MetricPayload) error {
 		return err
 	}
 
-	utils.Debug("Successfully exported %d metrics via OTLP", len(payload.Metrics))
+	utils.Debug("Successfully exported %d metrics via OTLP", len(metrics))
 	return nil
 }
 
