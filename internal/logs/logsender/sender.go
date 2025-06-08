@@ -7,7 +7,7 @@ import (
 
 	"github.com/aaronlmathis/gosight-agent/internal/config"
 	grpcconn "github.com/aaronlmathis/gosight-agent/internal/grpc"
-	"github.com/aaronlmathis/gosight-agent/internal/otelconvert"
+	"github.com/aaronlmathis/gosight-agent/internal/otelreceiver"
 	"github.com/aaronlmathis/gosight-shared/model"
 	"github.com/aaronlmathis/gosight-shared/utils"
 	collogpb "go.opentelemetry.io/proto/otlp/collector/logs/v1"
@@ -118,22 +118,22 @@ func (s *LogSender) manageConnection() {
 	}
 }
 
-// SendLogs converts the LogPayload to OTLP format and sends it via unary call.
+// SendLogs converts the log entries to OTLP format and sends them via unary call.
 // If no active client, returns Unavailable so your worker backoff kicks in.
-func (s *LogSender) SendLogs(payload *model.LogPayload) error {
+func (s *LogSender) SendLogs(logs []model.LogEntry) error {
 	if s.client == nil {
 		return status.Error(codes.Unavailable, "no active OTLP logs client")
 	}
 
 	// Convert to OTLP format using our conversion function
-	otlpReq := otelconvert.ConvertToOTLPLogs(payload)
+	otlpReq := otelreceiver.ConvertToOTLPLogs(logs)
 	if otlpReq == nil {
 		utils.Warn("Failed to convert logs to OTLP format")
 		return status.Error(codes.InvalidArgument, "failed to convert logs to OTLP")
 	}
 
 	// Send via unary call (OTLP standard)
-	utils.Info("Sending %d logs to server via OTLP", len(payload.Logs))
+	utils.Info("Sending %d logs to server via OTLP", len(logs))
 
 	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
 	defer cancel()
@@ -144,7 +144,7 @@ func (s *LogSender) SendLogs(payload *model.LogPayload) error {
 		return err
 	}
 
-	utils.Debug("Successfully exported %d logs via OTLP", len(payload.Logs))
+	utils.Debug("Successfully exported %d logs via OTLP", len(logs))
 	return nil
 }
 

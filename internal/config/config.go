@@ -75,6 +75,21 @@ type ProcessCollectionConfig struct {
 	Workers  int           `yaml:"workers"`
 }
 
+// OTLPReceiverConfig defines the configuration for the OTLP receiver.
+// It includes settings for enabling the receiver and specifying the gRPC and HTTP ports.
+type OTLPReceiverConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	GRPCPort int    `yaml:"grpc_port"`
+	HTTPAddr string `yaml:"http_addr"`
+}
+
+// TraceCollectionConfig defines the configuration for trace collection
+// It includes settings for the collection interval and number of workers.
+type TraceCollectionConfig struct {
+	Interval time.Duration `yaml:"interval"`
+	Workers  int           `yaml:"workers"`
+}
+
 // Config holds the configuration for the GoSight agent.
 // It includes settings for TLS, logging, Podman and Docker integration,
 // custom tags, and various collection intervals for metrics, logs, and processes.
@@ -115,9 +130,16 @@ type Config struct {
 		MetricCollection  MetricCollectionConfig  `yaml:"metric_collection"`
 		LogCollection     LogCollectionConfig     `yaml:"log_collection"`
 		ProcessCollection ProcessCollectionConfig `yaml:"process_collection"`
+		TraceCollection   TraceCollectionConfig   `yaml:"trace_collection"`
 
 		Environment string `yaml:"environment"`
 	}
+
+	OTLPReceiver OTLPReceiverConfig `yaml:"otlp_receiver"`
+
+	Server struct {
+		Address string `yaml:"address"`
+	} `yaml:"server"`
 }
 
 // LoadConfig loads the configuration from a YAML file.

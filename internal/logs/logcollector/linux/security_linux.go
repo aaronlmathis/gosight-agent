@@ -279,7 +279,7 @@ func (c *SecurityLogCollector) parseLogLine(line string) model.LogEntry {
 			logYear--
 		}
 		// Construct full timestamp
-		timestamp = time.Date(logYear, ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.Local) // Use local time zone
+		timestamp = time.Date(logYear, ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.Local)
 	} else {
 		utils.Debug("Failed to parse timestamp '%s': %v", tsString, err)
 	}
@@ -306,21 +306,26 @@ func (c *SecurityLogCollector) parseLogLine(line string) model.LogEntry {
 	}
 
 	return model.LogEntry{
-		Timestamp: timestamp,
-		Level:     level,
-		Message:   trimmedMsg,
-		Source:    source,
-		Category:  "auth",
-		PID:       0, // PID extraction would need more parsing
+		Timestamp:         timestamp,
+		ObservedTimestamp: time.Now(),
+		SeverityText:      strings.ToUpper(level),
+		Level:             level,
+		Body:              trimmedMsg,
+		Message:           trimmedMsg, // Keep for compatibility
+		Source:            source,
+		Category:          "auth",
+		PID:               0, // PID extraction would need more parsing
 		Labels: map[string]string{
 			"log_path":     c.logPath,
 			"hostname_log": hostname,
 		},
-		Meta: &model.LogMeta{
-			Platform: "file",
-			AppName:  source,
-			Path:     c.logPath,
+		Attributes: map[string]interface{}{
+			"log.file.path": c.logPath,
+			"host.name":     hostname,
+			"process.name":  source,
 		},
+		// Note: Meta will be set by the LogRunner when collecting
+		Meta: nil,
 	}
 }
 

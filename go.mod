@@ -5,12 +5,15 @@ go 1.23.7
 toolchain go1.24.3
 
 require (
-	github.com/aaronlmathis/gosight-shared v0.0.0-20250529171634-55ec3c7de783
+	github.com/aaronlmathis/gosight-shared v0.0.0-20250607034122-acff8291b591
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/docker/docker v25.0.6+incompatible
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/mux v1.8.1
 	github.com/nxadm/tail v1.4.11
 	github.com/shirou/gopsutil/v4 v4.25.3
+	go.opentelemetry.io/collector/pdata v1.33.0
+	go.opentelemetry.io/collector/receiver/otlpreceiver v0.127.0
 	go.opentelemetry.io/proto/otlp v1.7.0
 	golang.org/x/sys v0.33.0
 	google.golang.org/grpc v1.72.2
@@ -85,11 +88,9 @@ require (
 	go.opentelemetry.io/collector/featuregate v1.33.0 // indirect
 	go.opentelemetry.io/collector/internal/sharedcomponent v0.127.0 // indirect
 	go.opentelemetry.io/collector/internal/telemetry v0.127.0 // indirect
-	go.opentelemetry.io/collector/pdata v1.33.0 // indirect
 	go.opentelemetry.io/collector/pdata/pprofile v0.127.0 // indirect
 	go.opentelemetry.io/collector/pipeline v0.127.0 // indirect
 	go.opentelemetry.io/collector/receiver v1.33.0 // indirect
-	go.opentelemetry.io/collector/receiver/otlpreceiver v0.127.0 // indirect
 	go.opentelemetry.io/collector/receiver/receiverhelper v0.127.0 // indirect
 	go.opentelemetry.io/collector/receiver/xreceiver v0.127.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.10.0 // indirect

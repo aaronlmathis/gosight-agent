@@ -139,3 +139,61 @@ func BuildContainerMeta(cfg *config.Config, addTags map[string]string, agentID, 
 		Tags:                 tags,
 	}
 }
+
+// MergeMetaWithBase merges a log-specific Meta with the base Meta,
+// preserving log-specific metadata while filling in missing fields from base.
+func MergeMetaWithBase(base *model.Meta, logMeta *model.Meta) *model.Meta {
+	if base == nil {
+		return logMeta
+	}
+	if logMeta == nil {
+		return base
+	}
+
+	// Start with a copy of the base
+	merged := *base
+
+	// Override with log-specific fields if they exist
+	if logMeta.AgentID != "" {
+		merged.AgentID = logMeta.AgentID
+	}
+	if logMeta.HostID != "" {
+		merged.HostID = logMeta.HostID
+	}
+	if logMeta.Hostname != "" {
+		merged.Hostname = logMeta.Hostname
+	}
+	if logMeta.IPAddress != "" {
+		merged.IPAddress = logMeta.IPAddress
+	}
+	if logMeta.EndpointID != "" {
+		merged.EndpointID = logMeta.EndpointID
+	}
+	if logMeta.ContainerID != "" {
+		merged.ContainerID = logMeta.ContainerID
+	}
+	if logMeta.ContainerName != "" {
+		merged.ContainerName = logMeta.ContainerName
+	}
+	if logMeta.ContainerImageID != "" {
+		merged.ContainerImageID = logMeta.ContainerImageID
+	}
+	if logMeta.ContainerImageName != "" {
+		merged.ContainerImageName = logMeta.ContainerImageName
+	}
+	if logMeta.Service != "" {
+		merged.Service = logMeta.Service
+	}
+	if logMeta.AppVersion != "" {
+		merged.AppVersion = logMeta.AppVersion
+	}
+	if logMeta.Kind != "" {
+		merged.Kind = logMeta.Kind
+	}
+
+	// Merge tags and labels, with log-specific ones taking precedence
+	merged.Tags = utils.MergeMaps(base.Tags, logMeta.Tags)
+	merged.Labels = utils.MergeMaps(base.Labels, logMeta.Labels)
+
+	return &merged
+}

@@ -26,21 +26,18 @@ package metricsender
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/aaronlmathis/gosight-shared/model"
 	"github.com/aaronlmathis/gosight-shared/utils"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-// StartWorkerPool launches N workers and processes metric payloads with retries
-// in case of transient errors. Each worker will attempt to send the payload
+// StartWorkerPool launches N workers and processes metric batches with retries
+// in case of transient errors. Each worker will attempt to send the batch
 // to the gRPC server. The number of workers is determined by the workerCount
 // parameter. The workers will run until the context is done or an error occurs.
 // The function uses a goroutine for each worker, allowing them to run concurrently.
-func (s *MetricSender) StartWorkerPool(ctx context.Context, queue <-chan *model.MetricPayload, workerCount int) {
+func (s *MetricSender) StartWorkerPool(ctx context.Context, queue <-chan []*model.Metric, workerCount int) {
 	for i := 0; i < workerCount; i++ {
 		s.wg.Add(1)
 		go func(id int) {
@@ -60,59 +57,20 @@ func (s *MetricSender) StartWorkerPool(ctx context.Context, queue <-chan *model.
 					continue
 				}
 
-				// Pull next payload (or exit)
-				var payload *model.MetricPayload
+				// Pull next batch (or exit)
+				var batch []*model.Metric
 				select {
-				case payload = <-queue:
+				case batch = <-queue:
 				case <-ctx.Done():
 					utils.Info("Metric worker #%d shutting down", id)
 					return
 				}
 
-				// 4) Send (errors will be logged)
-				if err := s.SendMetrics(payload); err != nil {
-					utils.Warn("Metric worker #%d failed to send payload: %v", id, err)
+				// Send the batch (errors will be logged)
+				if err := s.SendMetrics(batch); err != nil {
+					utils.Warn("Metric worker #%d failed to send batch: %v", id, err)
 				}
 			}
 		}(i + 1)
 	}
-}
-
-// trySendWithBackoff attempts to send the metric payload to the gRPC server.
-// It uses exponential backoff for retries in case of transient errors.
-// The function will retry sending the payload up to 5 times with increasing
-// backoff times. If the payload is successfully sent, it returns nil.
-// If the send fails after 5 attempts, it returns an error.
-func (s *MetricSender) trySendWithBackoff(payload *model.MetricPayload) error {
-	var err error
-	backoff := 500 * time.Millisecond
-	maxBackoff := 10 * time.Second
-
-	for attempt := 1; attempt <= 1; attempt++ {
-		err = s.SendMetrics(payload)
-		if err == nil {
-			return nil
-		}
-
-		st, ok := status.FromError(err)
-		if ok {
-			switch st.Code() {
-			case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted:
-				utils.Warn("Transient error (%s) — retrying in %v [attempt %d/5]", st.Code(), backoff, attempt)
-			default:
-				utils.Error("Permanent send error (%s): %v", st.Code(), err)
-				return err // Do not retry permanent errors
-			}
-		} else {
-			utils.Warn("Unknown error — retrying in %v [attempt %d/5]: %v", backoff, attempt, err)
-		}
-
-		time.Sleep(backoff)
-		backoff *= 2
-		if backoff > maxBackoff {
-			backoff = maxBackoff
-		}
-	}
-
-	return fmt.Errorf("send failed after 5 attempts: %w", err)
 }

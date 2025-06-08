@@ -330,9 +330,8 @@ func mapPriorityToLevel(priority string) string {
 
 // buildLogEntry constructs a LogEntry from a systemd journal entry.
 // Fields: cleaned journald fields (no `_` prefix)
-// Meta.Extra: original raw journald fields for advanced filtering/debugging
+// Attributes: original raw journald fields for advanced filtering/debugging
 func buildLogEntry(entry *sdjournal.JournalEntry, maxSize int) model.LogEntry {
-
 	timestamp := time.Unix(0, int64(entry.RealtimeTimestamp)*int64(time.Microsecond))
 
 	msg := entry.Fields["MESSAGE"]
@@ -341,7 +340,7 @@ func buildLogEntry(entry *sdjournal.JournalEntry, maxSize int) model.LogEntry {
 		msg = sanitizeUTF8(msg)
 	}
 	// Truncate after sanitizing
-	if len(msg) > maxSize && maxSize > 0 { // Check maxSize > 0
+	if len(msg) > maxSize && maxSize > 0 {
 		msg = msg[:maxSize] + " [truncated]"
 	}
 
@@ -353,64 +352,85 @@ func buildLogEntry(entry *sdjournal.JournalEntry, maxSize int) model.LogEntry {
 		"CONTAINER_NAME"}
 
 	fields := make(map[string]string)
+	attributes := make(map[string]interface{})
+
 	for _, k := range wanted {
-		if v, ok := entry.Fields[k]; ok && v != "" { // Only add if value exists and is not empty
-			fields[strings.TrimPrefix(k, "_")] = v // Trim leading _ for cleaner field names
+		if v, ok := entry.Fields[k]; ok && v != "" {
+			cleanKey := strings.TrimPrefix(k, "_")
+			fields[cleanKey] = v
+			// Add to OTLP attributes with proper naming
+			attributes["systemd."+strings.ToLower(cleanKey)] = v
 		}
 	}
-	// Classify the category based on SYSLOG_IDENTIFIER or SYSTEMD_UNIT using the classifyCategory function
-	category := classifyCategory(fields["SYSLOG_IDENTIFIER"], fields["SYSTEMD_UNIT"])
-
-	// Try to extact user information from fields
-	user := extractUserFromFields(entry.Fields)
 
 	// Add priority and hostname if available
-	if v := entry.Fields["_PRIORITY"]; v != "" {
+	if v := entry.Fields["PRIORITY"]; v != "" {
 		fields["PRIORITY"] = v
+		attributes["syslog.priority"] = v
 	}
 	if v := entry.Fields["_HOSTNAME"]; v != "" {
 		fields["HOSTNAME"] = v
+		attributes["host.name"] = v
 	}
 
-	// Simplified Labels - use Fields map for most details
-	tags := map[string]string{
-		// Add essential tags for quick filtering/grouping if needed
-		// "unit": category, // Maybe redundant if in Fields
-	}
+	// Classify the category
+	category := classifyCategory(fields["SYSLOG_IDENTIFIER"], fields["SYSTEMD_UNIT"])
+	attributes["user"] = extractUserFromFields(entry.Fields)
+	level := mapPriorityToLevel(entry.Fields["PRIORITY"])
+
+	// Container-specific labels
+	labels := map[string]string{}
 	if cid := entry.Fields["CONTAINER_ID"]; cid != "" {
-		tags["container_id"] = cid
+		labels["container_id"] = cid
+		attributes["container.id"] = cid
 	}
 	if cname := entry.Fields["CONTAINER_NAME"]; cname != "" {
-		tags["container_name"] = cname
+		labels["container_name"] = cname
+		attributes["container.name"] = cname
 	}
 
-	// Keep the RAW  fields - may need?
-	extra := map[string]string{}
-	for _, k := range wanted {
-		if v, ok := entry.Fields[k]; ok && v != "" {
-			extra[k] = v
-		}
+	// Add service/unit info
+	if unit := fields["SYSTEMD_UNIT"]; unit != "" {
+		attributes["service.name"] = unit
+	}
+	if syslogID := fields["SYSLOG_IDENTIFIER"]; syslogID != "" {
+		attributes["service.name"] = syslogID
 	}
 
 	return model.LogEntry{
-		Timestamp: timestamp,
-		Level:     mapPriorityToLevel(entry.Fields["PRIORITY"]),
-		Message:   msg,
-		Source:    "systemd",
-		Category:  category,
-		PID:       parsePID(entry.Fields["_PID"]),
-		Fields:    fields, // Richer metadata goes here
-		Labels:    tags,   // Minimal, high-value tags
-		Meta: &model.LogMeta{ // Keep essential routing/origin info here
-			Platform:      "journald",
-			AppName:       fields["SYSLOG_IDENTIFIER"],
-			ContainerID:   fields["CONTAINER_ID"],
-			ContainerName: fields["CONTAINER_NAME"],
-			Unit:          fields["SYSTEMD_UNIT"], // Explicitly store unit if present
-			User:          user,
-			Executable:    fields["EXE"],
-			Extra:         extra, // Keep all raw fields for potential future use
-		},
+		Timestamp:         timestamp,
+		ObservedTimestamp: time.Now(),
+		SeverityText:      strings.ToUpper(level),
+		SeverityNumber:    convertLevelToSeverityNumber(level),
+		Level:             level,
+		Body:              msg,
+		Message:           msg, // Keep for compatibility
+		Source:            "systemd",
+		Category:          category,
+		PID:               parsePID(entry.Fields["_PID"]),
+		Fields:            fields,
+		Labels:            labels,
+		Attributes:        attributes,
+		// Note: Meta will be set by the LogRunner when collecting
+		Meta: nil,
+	}
+}
+
+// convertLevelToSeverityNumber converts log level to OTLP severity number
+func convertLevelToSeverityNumber(level string) int32 {
+	switch strings.ToLower(level) {
+	case "critical":
+		return 21 // FATAL4
+	case "error":
+		return 17 // ERROR
+	case "warning":
+		return 13 // WARN
+	case "info":
+		return 9 // INFO
+	case "debug":
+		return 5 // DEBUG
+	default:
+		return 0 // UNSPECIFIED
 	}
 }
 
